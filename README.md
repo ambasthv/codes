@@ -1,4 +1,4 @@
-new one two
+three
 import openpyxl
 from pptx import Presentation
 from pptx.util import Inches
@@ -12,7 +12,7 @@ excel_file = "OPM.xlsx"  # Path to your Excel file
 ppt_file = "output.pptx"  # Path to your PowerPoint file
 
 # Step 1: Load PowerPoint file
-# Explanation: Load the existing PowerPoint file using python-pptx. If it has fewer than 2 slides, add a blank slide for the second sheet (NAV).
+# Explanation: Load the existing PowerPoint file using python-pptx. If it has fewer than 2 slides, add a blank slide for the NAV sheet.
 ppt = Presentation(ppt_file)
 if len(ppt.slides) < 2:
     ppt.slides.add_slide(ppt.slide_layouts[6])  # Blank slide (layout index 6)
@@ -30,24 +30,25 @@ for shape in slide2.shapes:
     sp.getparent().remove(sp)
 
 # Step 3: Initialize COM for Excel interaction
-# Explanation: Initialize COM for win32com to interact with Excel. We use a try-except block to catch and handle potential COM errors.
+# Explanation: Initialize COM and open Excel without setting the Visible property to avoid the error. Add a delay and error handling to ensure stability.
 try:
     pythoncom.CoInitialize()
     excel = client.Dispatch("Excel.Application")
-    excel.Visible = False  # Keep Excel hidden
+    time.sleep(1)  # Add delay to ensure Excel initializes
     excel.DisplayAlerts = False  # Suppress alerts to avoid interruptions
     wb_com = excel.Workbooks.Open(os.path.abspath(excel_file))
 except Exception as e:
+    pythoncom.CoUninitialize()
     raise Exception(f"Failed to initialize Excel or open workbook: {str(e)}")
 
 # Step 4: Function to export Excel range as picture
-# Explanation: Define a function to select a range (C2:K31) from a specified sheet, copy it as a picture, and export it as a PNG. Includes error handling and a slight delay to avoid COM issues.
+# Explanation: Define a function to copy a range (C2:K31) from a specified sheet as a picture and export it as a PNG. Includes a delay to prevent COM issues.
 def export_range_as_picture(sheet_name, range_str, temp_image_path):
     try:
         ws_com = wb_com.Worksheets(sheet_name)
         rng = ws_com.Range(range_str)
         rng.CopyPicture(Format=2)  # Copy as bitmap
-        time.sleep(0.1)  # Brief delay to ensure clipboard is ready
+        time.sleep(0.1)  # Brief delay for clipboard stability
         chart = ws_com.ChartObjects().Add(0, 0, rng.Width, rng.Height).Chart
         chart.Paste()
         chart.Export(temp_image_path, "PNG")
@@ -56,12 +57,12 @@ def export_range_as_picture(sheet_name, range_str, temp_image_path):
         raise Exception(f"Failed to export range {range_str} from sheet {sheet_name}: {str(e)}")
 
 # Step 5: Export range from "CLOCK" sheet
-# Explanation: Export the range C2:K31 from the "CLOCK" sheet as a PNG image to a temporary file. Uses the function defined in Step 4.
+# Explanation: Export the range C2:K31 from the CLOCK sheet as a PNG to a temporary file.
 temp_image_clock = os.path.abspath("temp_clock.png")
 export_range_as_picture("CLOCK", "C2:K31", temp_image_clock)
 
 # Step 6: Paste "CLOCK" image into first slide and align
-# Explanation: Add the PNG to the first slide, positioned 0.5 inch from all sides. Resize to fit within slide dimensions (13.33 - 1 inch width, 7.5 - 1 inch height) while preserving aspect ratio.
+# Explanation: Add the PNG to the first slide, positioned 0.5 inch from all sides. Resize to fit within slide (13.33 - 1 inch width, 7.5 - 1 inch height) while preserving aspect ratio.
 pic_clock = slide1.shapes.add_picture(temp_image_clock, Inches(0.5), Inches(0.5))
 pic_width = Inches(13.33 - 1)  # Max width: slide width minus 1 inch
 pic_height = Inches(7.5 - 1)   # Max height: slide height minus 1 inch
@@ -78,12 +79,12 @@ pic_clock.top = Inches(0.5)
 os.remove(temp_image_clock)  # Clean up temporary file
 
 # Step 7: Export range from "NAV" sheet
-# Explanation: Export the range C2:K31 from the "NAV" sheet as a PNG image to a temporary file. Uses the same function as Step 5.
+# Explanation: Export the range C2:K31 from the NAV sheet as a PNG to a temporary file.
 temp_image_nav = os.path.abspath("temp_nav.png")
 export_range_as_picture("NAV", "C2:K31", temp_image_nav)
 
 # Step 8: Paste "NAV" image into second slide and align
-# Explanation: Add the PNG to the second slide, positioned 0.5 inch from all sides. Resize to fit while preserving aspect ratio, as in Step 6.
+# Explanation: Add the PNG to the second slide, positioned 0.5 inch from all sides. Resize to fit while preserving aspect ratio.
 pic_nav = slide2.shapes.add_picture(temp_image_nav, Inches(0.5), Inches(0.5))
 pic_width = Inches(13.33 - 1)
 pic_height = Inches(7.5 - 1)
@@ -99,7 +100,7 @@ pic_nav.top = Inches(0.5)
 os.remove(temp_image_nav)  # Clean up temporary file
 
 # Step 9: Clean up Excel COM objects
-# Explanation: Close the Excel workbook without saving changes, quit Excel, and uninitialize COM to free resources. Includes error handling to ensure proper cleanup.
+# Explanation: Close the Excel workbook, quit Excel, and uninitialize COM. Use try-except to handle potential cleanup errors gracefully.
 try:
     wb_com.Close(SaveChanges=False)
     excel.Quit()
