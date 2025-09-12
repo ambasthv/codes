@@ -1,4 +1,4 @@
-newtwo
+pasdted 
 import openpyxl
 from pptx import Presentation
 from pptx.util import Inches
@@ -18,7 +18,7 @@ if not os.access(excel_file, os.R_OK):
     raise PermissionError(f"No read permission for Excel file: {os.path.abspath(excel_file)}")
 
 # Step 2: Load Excel file and verify sheets
-# Explanation: Load the Excel file using openpyxl and confirm that CLOCK and NAV sheets exist.
+# Explanation: Load the Excel file using openpyxl and confirm that CLOCK and NAV sheets exist to ensure valid inputs.
 wb = openpyxl.load_workbook(excel_file)
 if "CLOCK" not in wb.sheetnames:
     raise ValueError("Sheet 'CLOCK' not found in Excel file")
@@ -46,7 +46,7 @@ for shape in slide2.shapes:
     sp.getparent().remove(sp)
 
 # Step 5: Function to create temporary Excel file for a range
-# Explanation: Define a function to copy the range C2:K31 from a specified sheet into a new temporary Excel file, which will be embedded in PowerPoint.
+# Explanation: Define a function to copy the range C2:K31 from a specified sheet into a new temporary Excel file, preserving cell values and basic formatting for embedding.
 def create_temp_excel_file(sheet, range_str, temp_file_path):
     temp_wb = openpyxl.Workbook()
     temp_sheet = temp_wb.active
@@ -54,7 +54,7 @@ def create_temp_excel_file(sheet, range_str, temp_file_path):
     start_row, start_col = openpyxl.utils.cell.coordinate_to_tuple(start_cell)
     end_row, end_col = openpyxl.utils.cell.coordinate_to_tuple(end_cell)
     
-    # Copy cell values, styles, and formatting
+    # Copy cell values and basic formatting
     for i, row in enumerate(range(start_row, end_row + 1)):
         for j, col in enumerate(range(start_col, end_col + 1)):
             src_cell = sheet.cell(row=row, column=col)
@@ -88,7 +88,7 @@ temp_file_clock = os.path.join(tempfile.gettempdir(), "temp_clock.xlsx")
 create_temp_excel_file(sheet_clock, "C2:K31", temp_file_clock)
 
 # Step 7: Embed CLOCK range into first slide
-# Explanation: Embed the temporary Excel file as an OLE object in the first slide, positioned 0.5 inch from all sides. Set dimensions to fit within slide while approximating the range's aspect ratio.
+# Explanation: Embed the temporary Excel file as an OLE object in the first slide, positioned 0.5 inch from all sides. Set dimensions to fit within the slide while approximating the range's aspect ratio.
 pic_width = Inches(13.33 - 1)  # Max width: slide width minus 1 inch
 pic_height = Inches(7.5 - 1)   # Max height: slide height minus 1 inch
 # Approximate aspect ratio for C2:K31 (9 columns x 30 rows)
@@ -100,7 +100,7 @@ else:
     height = pic_height
     width = pic_height * aspect_ratio
 slide1.shapes.add_ole_object(
-    file_name=temp_file_clock,
+    object_file=temp_file_clock,  # Corrected parameter name
     prog_id="Excel.Sheet",
     left=Inches(0.5),
     top=Inches(0.5),
@@ -115,9 +115,9 @@ temp_file_nav = os.path.join(tempfile.gettempdir(), "temp_nav.xlsx")
 create_temp_excel_file(sheet_nav, "C2:K31", temp_file_nav)
 
 # Step 9: Embed NAV range into second slide
-# Explanation: Embed the temporary Excel file as an OLE object in the second slide, positioned 0.5 inch from all sides, with dimensions matching the CLOCK embedding.
+# Explanation: Embed the temporary Excel file as an OLE object in the second slide, using the same dimensions and positioning as the CLOCK embedding.
 slide2.shapes.add_ole_object(
-    file_name=temp_file_nav,
+    object_file=temp_file_nav,  # Corrected parameter name
     prog_id="Excel.Sheet",
     left=Inches(0.5),
     top=Inches(0.5),
