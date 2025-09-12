@@ -1,6 +1,6 @@
-import openpyxl- Viieed
+import openpyxl 9;49
 from pptx import Presentation
-from pptx.util import Inches, Pt, Cm
+from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 import os
@@ -34,16 +34,19 @@ def get_table_range(sheet, table_name):
     end_row, end_col = openpyxl.utils.cell.coordinate_from_string(end_cell)[1], openpyxl.utils.cell.column_index_from_string(openpyxl.utils.cell.coordinate_from_string(end_cell)[0])
     return start_row, start_col, end_row, end_col
 
-# Step 5: Function to copy Excel table to PowerPoint with formatting
-def copy_table_to_ppt(table_name, slide, left, top, col_widths, row_heights, header_rgb=(0, 44, 113), row_rgb=(231, 232, 235)):
+# Step 5: Function to copy Excel table to PowerPoint with dynamic formatting
+def copy_table_to_ppt(table_name, slide, left, top, col_widths, total_height, header_height=Inches(0.5)):
     # Get table range
     start_row, start_col, end_row, end_col = get_table_range(sheet, table_name)
     rows = end_row - start_row + 1
     cols = end_col - start_col + 1
 
-    # Validate expected dimensions
-    if len(col_widths) != cols or len(row_heights) != rows:
-        raise Exception(f"Table '{table_name}' dimensions ({rows} rows, {cols} cols) do not match provided col_widths ({len(col_widths)}) or row_heights ({len(row_heights)})")
+    # Dynamically adjust row heights
+    row_heights = [header_height] + [Inches((total_height - header_height) / (rows - 1))] * (rows - 1) if rows > 1 else [header_height]
+
+    # Validate column widths
+    if len(col_widths) != cols:
+        raise Exception(f"Table '{table_name}' has {cols} columns, but {len(col_widths)} column widths provided")
 
     # Create table in PowerPoint
     table_width = sum(col_widths)
@@ -77,30 +80,30 @@ def copy_table_to_ppt(table_name, slide, left, top, col_widths, row_heights, hea
             # Set RGB colors
             if i == start_row:  # Header row
                 ppt_cell.fill.solid()
-                ppt_cell.fill.fore_color.rgb = RGBColor(*header_rgb)
+                ppt_cell.fill.fore_color.rgb = RGBColor(0, 44, 113)
             else:  # Data rows
                 ppt_cell.fill.solid()
-                ppt_cell.fill.fore_color.rgb = RGBColor(*row_rgb)
+                ppt_cell.fill.fore_color.rgb = RGBColor(231, 232, 235)
             paragraph.alignment = PP_ALIGN.CENTER
 
     return table
 
 # Step 6: Copy and paste tables to PowerPoint with specified layouts
-# Table 1: Top-left, 1 inch from left, spread to 1 inch from right (8 columns, 2 rows)
-# Slide width assumed as 13.33 inches (standard widescreen), so table width = 13.33 - 1 - 1 = 11.33 inches
+# Slide width: 13.33 inches (standard widescreen), height: 7.5 inches
+# Table 1: Top-left, 1 inch from left, spread to 1 inch from right (8 columns, dynamic rows)
 table1_col_widths = [Inches(1.5)] * 8  # 8 columns, each 1.5 inches
-table1_row_heights = [Inches(0.5), Inches(0.75)]  # 2 rows: header 0.5 inch, second row 0.75 inch
-table1 = copy_table_to_ppt("Table1", slide, Inches(1), Inches(1), table1_col_widths, table1_row_heights)
+table1_total_height = Inches(0.5 + 0.75)  # Header (0.5) + second row (0.75), adjusted dynamically for more rows
+table1 = copy_table_to_ppt("Table1", slide, Inches(1), Inches(1), table1_col_widths, table1_total_height)
 
-# Table 2: 1 inch below Table 1, spread to 1 inch from right (5 columns, 3 rows)
-table2_col_widths = [Inches(2), Inches(6)] + [Inches(4 / 3)] * 3  # 1st: 2 inch, 2nd: 6 inch, remaining 3: 4/3 inch
-table2_row_heights = [Inches(0.5)] + [Inches(2.5 / 2)] * 2  # Header: 0.5 inch, remaining 2 rows: 2.5/2 inch
-table2 = copy_table_to_ppt("Table2", slide, Inches(1), Inches(1 + 0.5 + 0.75 + 1), table2_col_widths, table2_row_heights)
+# Table 2: 1 inch below Table 1, spread to 1 inch from right (5 columns, dynamic rows)
+table2_col_widths = [Inches(2), Inches(6)] + [Inches((11.33 - 2 - 6) / 3)] * 3  # 1st: 2 inch, 2nd: 6 inch, remaining 3: (11.33-8)/3 inch
+table2_total_height = Inches(3)  # Total 3 inches (header 0.5, remaining 2.5 dynamically split)
+table2 = copy_table_to_ppt("Table2", slide, Inches(1), Inches(1 + 0.5 + 0.75 + 1), table2_col_widths, table2_total_height)
 
-# Table 3: 1 inch below Table 2, right side (1 inch from right), 4 columns, 6 rows
-table3_col_widths = [Inches(6 / 4)] * 4  # 4 columns, spread in 6 inches
-table3_row_heights = [Inches(0.5)] + [Inches(2 / 5)] * 5  # Header: 0.5 inch, remaining 5 rows: 2/5 inch
-table3 = copy_table_to_ppt("Table3", slide, Inches(13.33 - 1 - 6), Inches(1 + 0.5 + 0.75 + 1 + 3 + 1), table3_col_widths, table3_row_heights)
+# Table 3: 1 inch below Table 2, right side (1 inch from right), 4 columns, dynamic rows
+table3_col_widths = [Inches(6 / 4)] * 4  # 4 columns, each 6/4 = 1.5 inches
+table3_total_height = Inches(2.5)  # Total 2.5 inches (header 0.5, remaining 2 dynamically split)
+table3 = copy_table_to_ppt("Table3", slide, Inches(13.33 - 1 - 6), Inches(1 + 0.5 + 0.75 + 1 + 3 + 1), table3_col_widths, table3_total_height)
 
 # Step 7: Copy "BreachChart1" from Excel and paste as a picture in PowerPoint (bottom-left corner)
 pythoncom.CoInitialize()  # Initialize COM for win32com
@@ -120,7 +123,7 @@ if chart is None:
 
 # Export chart as image and add to PowerPoint
 chart.Chart.Export(os.path.abspath("temp_chart.png"))
-slide.shapes.add_picture("temp_chart.png", Inches(1), Inches(7.5 - 1))  # 1 inch from left, 1 inch from bottom (assuming slide height 7.5 inches)
+slide.shapes.add_picture("temp_chart.png", Inches(1), Inches(7.5 - 1))  # 1 inch from left, 1 inch from bottom
 os.remove("temp_chart.png")  # Clean up temporary file
 
 # Clean up Excel COM objects
