@@ -1,46 +1,61 @@
-prepez2
-import pandas as pd
-import matplotlib.pyplot as plt
+perpex3
+import win32com.client
+from PIL import ImageGrab
 from pptx import Presentation
 from pptx.util import Inches
+import time
 
-def df_to_png(df, filename):
-    fig, ax = plt.subplots(figsize=(9, 10))
-    ax.axis('off')
-    # Render DataFrame as a matplotlib table
-    table = ax.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')
-    table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1.2, 1.2)
-    plt.savefig(filename, bbox_inches='tight', dpi=200)
-    plt.close(fig)
+def copy_range_as_image(excel, sheet_name, cell_range, output_image):
+    wb = excel.ActiveWorkbook
+    ws = wb.Worksheets(sheet_name)
 
-excel_path = "your_excel_file.xlsx"
-ppt_path = "exported_slides.pptx"
+    # Copy range as picture (as bitmap to preserve formatting)
+    ws.Range(cell_range).CopyPicture(Format=win32com.client.constants.xlBitmap)
+    
+    # Wait briefly for clipboard to update (important)
+    time.sleep(1)
+    
+    # Grab image from clipboard
+    img = ImageGrab.grabclipboard()
+    
+    if img is None:
+        raise Exception("No image found on clipboard")
+    
+    # Save image as PNG
+    img.save(output_image)
 
-# Read Excel ranges (C2:K31 from both sheets)
-df_clock = pd.read_excel(excel_path, sheet_name="CLOCK", usecols="C:K", skiprows=1, nrows=30)
-df_nav = pd.read_excel(excel_path, sheet_name="NAV", usecols="C:K", skiprows=1, nrows=30)
+def create_ppt_with_images(image_files, ppt_output):
+    prs = Presentation()
+    layout_idx = min(5, len(prs.slide_layouts) - 1)
+    
+    for img_file in image_files:
+        slide = prs.slides.add_slide(prs.slide_layouts[layout_idx])
+        slide.shapes.add_picture(img_file, Inches(0.5), Inches(0.5),
+                                width=prs.slide_width - Inches(1),
+                                height=prs.slide_height - Inches(1))
+    prs.save(ppt_output)
 
-# Save DataFrames as images
-df_to_png(df_clock, "clock.png")
-df_to_png(df_nav, "nav.png")
+def main():
+    excel_path = r"your_excel_file.xlsx"
+    ppt_path = r"exported_slides.pptx"
+    
+    excel = win32com.client.Dispatch("Excel.Application")
+    excel.Visible = False
+    wb = excel.Workbooks.Open(excel_path)
+    
+    try:
+        # Copy CLOCK range to image
+        copy_range_as_image(excel, "CLOCK", "C2:K31", "clock.png")
+        # Copy NAV range to image
+        copy_range_as_image(excel, "NAV", "C2:K31", "nav.png")
+    finally:
+        wb.Close(SaveChanges=False)
+        excel.Quit()
 
-# Create PowerPoint presentation
-prs = Presentation()
-layout_idx = min(5, len(prs.slide_layouts) - 1)  # Use highest available or blank layout
+    # Create PPT and add the images
+    create_ppt_with_images(["clock.png", "nav.png"], ppt_path)
+    
+    print("PowerPoint created successfully:", ppt_path)
 
-# Insert CLOCK image
-slide1 = prs.slides.add_slide(prs.slide_layouts[layout_idx])
-slide1.shapes.add_picture("clock.png", Inches(0.5), Inches(0.5),
-                         width=prs.slide_width - Inches(1),
-                         height=prs.slide_height - Inches(1))
-
-# Insert NAV image
-slide2 = prs.slides.add_slide(prs.slide_layouts[layout_idx])
-slide2.shapes.add_picture("nav.png", Inches(0.5), Inches(0.5),
-                         width=prs.slide_width - Inches(1),
-                         height=prs.slide_height - Inches(1))
-
-# Save and close PPT
-prs.save(ppt_path)
+if __name__ == "__main__":
+    main()
