@@ -14,7 +14,7 @@ ppt_file = "output.pptx"  # Path to your PowerPoint file
 # Slide dimensions (standard widescreen)
 SLIDE_WIDTH = Inches(13.33)
 SLIDE_HEIGHT = Inches(7.5)
-MARGIN = Inches(1)  # Define margin globally
+MARGIN = Inches(1)
 TABLE1_2_WIDTH = SLIDE_WIDTH - 2 * MARGIN  # 11.33 inches for Table1 and Table2
 TABLE3_WIDTH = Inches(6)  # Fixed width for Table3
 
@@ -56,12 +56,16 @@ def copy_table_to_ppt(table_name, slide, left, top, total_width, header_height=I
             cell_value = str(sheet.cell(row=i, column=j).value or "")
             max_lens[col_idx] = max(max_lens[col_idx], len(cell_value))
     total_chars = sum(max_lens) or 1
-    col_widths = [Inches((max_len / total_chars) * total_width.inches) for max_len in max_lens]
+    # Convert total_width to inches for calculation
+    total_width_inches = total_width / 914400  # 1 inch = 914400 EMUs
+    col_widths = [Inches(max_len / total_chars * total_width_inches) for max_len in max_lens]
 
     # Dynamically calculate row heights
     if total_height is None:
         total_height = header_height + Inches(0.4) * (rows - 1)  # Default: 0.4 inch per data row
-    row_heights = [header_height] + [Inches((total_height.inches - header_height.inches) / (rows - 1))] * (rows - 1) if rows > 1 else [header_height]
+    total_height_inches = total_height / 914400  # Convert to inches
+    header_height_inches = header_height / 914400
+    row_heights = [header_height] + [Inches((total_height_inches - header_height_inches) / (rows - 1))] * (rows - 1) if rows > 1 else [header_height]
     table_height = sum(row_heights)
 
     # Create table in PowerPoint
@@ -156,4 +160,4 @@ pythoncom.CoUninitialize()
 ppt.save(ppt_file)
 
 print("PowerPoint updated successfully!")
-1013
+now
