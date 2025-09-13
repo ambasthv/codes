@@ -1,4 +1,4 @@
-vba
+vba2
 Sub CopyExcelRangesToPPT()
 
     Dim pptApp As Object
@@ -7,6 +7,8 @@ Sub CopyExcelRangesToPPT()
     Dim shp As Object
     Dim ws As Worksheet
     Dim pptPath As String
+    Dim saveFolder As String
+    Dim saveName As String
     
     ' Specify the path to your PPT template here
     pptPath = "C:\Path\To\Your\Template.pptx"  ' Replace with the actual path
@@ -17,6 +19,11 @@ Sub CopyExcelRangesToPPT()
     
     ' Open the PPT template
     Set pptPres = pptApp.Presentations.Open(pptPath)
+    
+    ' Delete all existing slides
+    Do While pptPres.Slides.Count > 0
+        pptPres.Slides(1).Delete
+    Loop
     
     ' Process "Clock" sheet
     Set ws = ThisWorkbook.Sheets("Clock")
@@ -51,6 +58,17 @@ Sub CopyExcelRangesToPPT()
     shp.Top = 72
     shp.Width = pptPres.PageSetup.SlideWidth - 144
     shp.Height = pptPres.PageSetup.SlideHeight - 144
+    
+    ' Save the PPT with timestamp
+    saveFolder = Left(pptPath, InStrRev(pptPath, "\"))
+    saveName = "Risk Rating OPM " & Format(Now, "yyyy-mm-dd hh-mm-ss") & ".pptx"
+    pptPres.SaveAs saveFolder & saveName
+    
+    ' Save the Excel workbook
+    ThisWorkbook.Save
+    
+    ' Show message
+    MsgBox "PPT has been updated"
     
     ' Clean up
     Set shp = Nothing
