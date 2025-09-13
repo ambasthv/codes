@@ -1,3 +1,4 @@
+new vbs
 Sub CopyExcelRangesToPPT()
 
     Dim pptApp As Object
@@ -18,6 +19,12 @@ Sub CopyExcelRangesToPPT()
     ' Create a new PowerPoint presentation
     Set pptPres = pptApp.Presentations.Add
     
+    ' Set slide size to 5 inches wide x 4 inches tall (1 inch = 72 points)
+    With pptPres.PageSetup
+        .SlideWidth = 5 * 72   ' 5 inches
+        .SlideHeight = 4 * 72  ' 4 inches
+    End With
+    
     ' Process "Clock" sheet
     Set ws = ThisWorkbook.Sheets("Clock")
     ws.Range("C2:K32").CopyPicture Appearance:=1, Format:=2  ' xlScreen = 1, xlPicture = 2
@@ -28,12 +35,12 @@ Sub CopyExcelRangesToPPT()
     ' Paste the picture
     newSlide.Shapes.Paste
     
-    ' Position and resize the shape (last added shape)
+    ' Position and resize the shape (last added shape) to fit with 0.5 inch margins
     Set shp = newSlide.Shapes(newSlide.Shapes.Count)
-    shp.Left = 72  ' 1 inch = 72 points
-    shp.Top = 72
-    shp.Width = pptPres.PageSetup.SlideWidth - 144  ' Subtract 2 inches (144 points)
-    shp.Height = pptPres.PageSetup.SlideHeight - 144
+    shp.Left = 36  ' 0.5 inch = 36 points
+    shp.Top = 36
+    shp.Width = pptPres.PageSetup.SlideWidth - 72   ' 5 - 1 = 4 inches
+    shp.Height = pptPres.PageSetup.SlideHeight - 72 ' 4 - 1 = 3 inches
     
     ' Process "NAV" sheet
     Set ws = ThisWorkbook.Sheets("NAV")
@@ -47,10 +54,10 @@ Sub CopyExcelRangesToPPT()
     
     ' Position and resize the shape
     Set shp = newSlide.Shapes(newSlide.Shapes.Count)
-    shp.Left = 72
-    shp.Top = 72
-    shp.Width = pptPres.PageSetup.SlideWidth - 144
-    shp.Height = pptPres.PageSetup.SlideHeight - 144
+    shp.Left = 36
+    shp.Top = 36
+    shp.Width = pptPres.PageSetup.SlideWidth - 72
+    shp.Height = pptPres.PageSetup.SlideHeight - 72
     
     ' Save the PPT with timestamp in the same folder as the Excel workbook
     saveName = "Risk Rating OPM " & Format(Now, "yyyy-mm-dd hh-mm-ss") & ".pptx"
@@ -59,6 +66,9 @@ Sub CopyExcelRangesToPPT()
     
     ' Save the Excel workbook
     ThisWorkbook.Save
+    
+    ' Close all PowerPoint instances
+    pptApp.Quit
     
     ' Show message
     MsgBox "PPT has been updated"
