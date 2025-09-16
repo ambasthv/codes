@@ -30,8 +30,8 @@ Sub Main_in_Use()
     End With
     
     ' Define target dimensions with 0.5 inch margins (subtract 1 inch total)
-    targetWidth = pptPres.PageSetup.SlideWidth - 72
-    targetHeight = pptPres.PageSetup.SlideHeight - 72
+    targetWidth = pptPres.PageSetup.SlideWidth - 72   ' 13.333 - 1 = 12.333 inches
+    targetHeight = pptPres.PageSetup.SlideHeight - 72 ' 7.5 - 1 = 6.5 inches
     
     ' Process "Clock" sheet
     Set ws = ThisWorkbook.Sheets("Clock")
@@ -43,13 +43,22 @@ Sub Main_in_Use()
     ' Paste the picture
     newSlide.Shapes.Paste
     
-    ' Get the pasted shape and scale proportionally to fit
+    ' Get the pasted shape
     Set shp = newSlide.Shapes(newSlide.Shapes.Count)
     origWidth = shp.Width
     origHeight = shp.Height
-    scaleFactor = Application.WorksheetFunction.Min(targetWidth / origWidth, targetHeight / origHeight)
+    
+    ' Scale to fit width first (to ensure 0.5 inch margins on left and right)
+    scaleFactor = targetWidth / origWidth
     shp.Width = origWidth * scaleFactor
     shp.Height = origHeight * scaleFactor
+    
+    ' If scaled height exceeds target height, scale based on height instead
+    If shp.Height > targetHeight Then
+        scaleFactor = targetHeight / origHeight
+        shp.Width = origWidth * scaleFactor
+        shp.Height = origHeight * scaleFactor
+    End If
     
     ' Center the shape
     shp.Left = (pptPres.PageSetup.SlideWidth - shp.Width) / 2
@@ -65,13 +74,22 @@ Sub Main_in_Use()
     ' Paste the picture
     newSlide.Shapes.Paste
     
-    ' Get the pasted shape and scale proportionally to fit
+    ' Get the pasted shape
     Set shp = newSlide.Shapes(newSlide.Shapes.Count)
     origWidth = shp.Width
     origHeight = shp.Height
-    scaleFactor = Application.WorksheetFunction.Min(targetWidth / origWidth, targetHeight / origHeight)
+    
+    ' Scale to fit width first (to ensure 0.5 inch margins on left and right)
+    scaleFactor = targetWidth / origWidth
     shp.Width = origWidth * scaleFactor
     shp.Height = origHeight * scaleFactor
+    
+    ' If scaled height exceeds target height, scale based on height instead
+    If shp.Height > targetHeight Then
+        scaleFactor = targetHeight / origHeight
+        shp.Width = origWidth * scaleFactor
+        shp.Height = origHeight * scaleFactor
+    End If
     
     ' Center the shape
     shp.Left = (pptPres.PageSetup.SlideWidth - shp.Width) / 2
@@ -96,5 +114,5 @@ Sub Main_in_Use()
     Set newSlide = Nothing
     Set pptPres = Nothing
     Set pptApp = Nothing
-
+'2
 End Sub
