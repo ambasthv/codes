@@ -1,118 +1,111 @@
-Sub Main_in_Use()
+Complete Metrics Comparison Table
+Detailed Direction & Performance Guide
+Metric
+Higher = Better?
+Good Range (1-100%)
+Performance Breakdown
+Best Use Case
+PSI
+(Population Stability Index)
+✅ Higher
+70-100%
+Poor: 1-30% (No predictive power)
+Fair: 31-50% (Weak predictor)
+Good: 51-70% (Moderate predictor)
+Excellent: 71-100% (Strong predictor)
+Measuring model stability over time
+KS
+(Kolmogorov-Smirnov)
+✅ Higher
+60-100%
+Poor: 1-40% (Weak separation)
+Fair: 41-60% (Moderate separation)
+Good: 61-80% (Strong separation)
+Excellent: 81-100% (Outstanding separation)
+Measuring model discrimination power
+GINI
+(Gini Coefficient)
+✅ Higher
+60-100%
+Poor: 1-40% (Poor discrimination)
+Fair: 41-60% (Moderate discrimination)
+Good: 61-80% (Strong discrimination)
+Excellent: 81-100% (Outstanding discrimination)
+Overall model ranking ability
+ACCURACY
+✅ Higher
+80-100%
+Poor: 1-70% (Unacceptable)
+Fair: 71-80% (Marginal)
+Good: 81-90% (Acceptable)
+Excellent: 91-100% (Outstanding)
+Overall classification performance
+Quick Reference Performance Levels
+Performance Level
+PSI Range
+KS Range
+GINI Range
+ACCURACY Range
+Description
+Excellent Model
+80-100%
+80-100%
+80-100%
+90-100%
+Production-ready, high confidence
+Good Model
+60-80%
+60-80%
+60-80%
+80-90%
+Deployable with monitoring
+Fair Model
+40-60%
+40-60%
+40-60%
+70-80%
+Needs improvement
+Poor Model
+1-40%
+1-40%
+1-40%
+1-70%
+Requires major rework
 
-    Dim pptApp As Object
-    Dim pptPres As Object
-    Dim newSlide As Object
-    Dim shp As Object
-    Dim ws As Worksheet
-    Dim saveFolder As String
-    Dim saveName As String
-    Dim targetWidth As Single
-    Dim targetHeight As Single
-    Dim origWidth As Single
-    Dim origHeight As Single
-    Dim scaleFactor As Single
-    
-    ' Get the folder path of the current Excel workbook
-    saveFolder = ThisWorkbook.Path & "\"
-    
-    ' Create PowerPoint application object
-    Set pptApp = CreateObject("PowerPoint.Application")
-    pptApp.Visible = True
-    
-    ' Create a new PowerPoint presentation
-    Set pptPres = pptApp.Presentations.Add
-    
-    ' Set slide size to 13.333 inches wide x 7.5 inches tall (1 inch = 72 points)
-    With pptPres.PageSetup
-        .SlideWidth = 13.333 * 72   ' Approximately 960 points
-        .SlideHeight = 7.5 * 72     ' 540 points
-    End With
-    
-    ' Define target dimensions with 0.5 inch margins (subtract 1 inch total)
-    targetWidth = pptPres.PageSetup.SlideWidth - 72   ' 13.333 - 1 = 12.333 inches
-    targetHeight = pptPres.PageSetup.SlideHeight - 72 ' 7.5 - 1 = 6.5 inches
-    
-    ' Process "Clock" sheet
-    Set ws = ThisWorkbook.Sheets("Clock")
-    ws.Range("C2:K32").CopyPicture Appearance:=1, Format:=2  ' xlScreen = 1, xlPicture = 2
-    
-    ' Add a new blank slide (ppLayoutBlank = 12)
-    Set newSlide = pptPres.Slides.Add(pptPres.Slides.Count + 1, 12)
-    
-    ' Paste the picture
-    newSlide.Shapes.Paste
-    
-    ' Get the pasted shape
-    Set shp = newSlide.Shapes(newSlide.Shapes.Count)
-    origWidth = shp.Width
-    origHeight = shp.Height
-    
-    ' Scale to fit width first (to ensure 0.5 inch margins on left and right)
-    scaleFactor = targetWidth / origWidth
-    shp.Width = origWidth * scaleFactor
-    shp.Height = origHeight * scaleFactor
-    
-    ' If scaled height exceeds target height, scale based on height instead
-    If shp.Height > targetHeight Then
-        scaleFactor = targetHeight / origHeight
-        shp.Width = origWidth * scaleFactor
-        shp.Height = origHeight * scaleFactor
-    End If
-    
-    ' Center the shape
-    shp.Left = (pptPres.PageSetup.SlideWidth - shp.Width) / 2
-    shp.Top = (pptPres.PageSetup.SlideHeight - shp.Height) / 2
-    
-    ' Process "NAV" sheet
-    Set ws = ThisWorkbook.Sheets("NAV")
-    ws.Range("C2:K32").CopyPicture Appearance:=1, Format:=2
-    
-    ' Add another new blank slide
-    Set newSlide = pptPres.Slides.Add(pptPres.Slides.Count + 1, 12)
-    
-    ' Paste the picture
-    newSlide.Shapes.Paste
-    
-    ' Get the pasted shape
-    Set shp = newSlide.Shapes(newSlide.Shapes.Count)
-    origWidth = shp.Width
-    origHeight = shp.Height
-    
-    ' Scale to fit width first (to ensure 0.5 inch margins on left and right)
-    scaleFactor = targetWidth / origWidth
-    shp.Width = origWidth * scaleFactor
-    shp.Height = origHeight * scaleFactor
-    
-    ' If scaled height exceeds target height, scale based on height instead
-    If shp.Height > targetHeight Then
-        scaleFactor = targetHeight / origHeight
-        shp.Width = origWidth * scaleFactor
-        shp.Height = origHeight * scaleFactor
-    End If
-    
-    ' Center the shape
-    shp.Left = (pptPres.PageSetup.SlideWidth - shp.Width) / 2
-    shp.Top = (pptPres.PageSetup.SlideHeight - shp.Height) / 2
-    
-    ' Save the PPT with timestamp in the same folder as the Excel workbook
-    saveName = "Risk Rating OPM " & Format(Now, "yyyy-mm-dd hh-mm-ss") & ".pptx"
-    pptPres.SaveAs saveFolder & saveName
-    pptPres.Close
-    
-    ' Save the Excel workbook
-    ThisWorkbook.Save
-    
-    ' Close all PowerPoint instances
-    pptApp.Quit
-    
-    ' Show message
-    MsgBox "PPT has been updated"
-    
-    ' Clean up
-    Set shp = Nothing
-    Set newSlide = Nothing
-    Set pptPres = Nothing
-    Set pptApp = Nothing
-'2
-End Sub
+FINAL SUMMARY TABLE
+Metric
+Direction
+Target Range
+Thresholds
+Industry Notes
+PSI
+Higher = Better
+70-100%
+>70% = Strong
+<30% = Poor
+Model stability tracking
+KS
+Higher = Better
+60-100%
+>60% = Good
+>80% = Excellent
+Discrimination power
+GINI
+Higher = Better
+60-100%
+>60% = Good
+>80% = Excellent
+Ranking ability
+ACCURACY
+Higher = Better
+80-100%
+>80% = Good
+>90% = Excellent
+Classification performance
+Key Insights:
+	•	All metrics are “higher = better” - unlike AUC which is 0.5-1.0
+	•	Production Target: Aim for all metrics in the 70-100% range
+	•	Consistency: Good models show balanced performance across all metrics
+	•	Context: Industry benchmarks vary (finance: 85%+, marketing: 70%+)
+	•	Pro Tip: For imbalanced datasets, KS & GINI are more reliable than accuracy
+Copy either table above - the first has all details, the second is the concise summary!
