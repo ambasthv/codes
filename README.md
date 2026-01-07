@@ -1,8 +1,13 @@
-chmod : The term 'chmod' is not recognized as the name of a cmdlet, function, script file, or operable 
-program. Check the spelling of the name, or if a path was included, verify that the path is correct and try     
-again.
-At line:1 char:1
-+ chmod +x .\run_all.sh
-+ ~~~~~
-    + CategoryInfo          : ObjectNotFound: (chmod:String) [], CommandNotFoundException
-    + FullyQualifiedErrorId : CommandNotFoundException
+@echo off
+
+jupyter nbconvert --execute --to notebook --inplace notebook1.ipynb
+jupyter nbconvert --execute --to notebook --inplace notebook2.ipynb
+jupyter nbconvert --execute --to notebook --inplace notebook3.ipynb
+jupyter nbconvert --execute --to notebook --inplace notebook4.ipynb
+jupyter nbconvert --execute --to notebook --inplace notebook5.ipynb
+jupyter nbconvert --execute --to notebook --inplace notebook6.ipynb
+jupyter nbconvert --execute --to notebook --inplace notebook7.ipynb
+jupyter nbconvert --execute --to notebook --inplace notebook8.ipynb
+
+echo All notebooks executed!
+pause
