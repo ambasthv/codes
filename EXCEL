@@ -1,0 +1,19 @@
+Metric	2025Q3
+OVERRIDES	0.0008
+Accuracy 	0.0027
+Input PSI	0
+PSI	0.11
+Discrimination- GINI	0.0445
+Discrimination-KS	0.3827
+Balance/Exposure 	28.67 B/41.65 B
+
+
+
+Metric	2025Q3
+OVERRIDES	0.001
+Accuracy 	0.0035
+Input PSI	0.12
+PSI	0.165
+Discrimination- GINI	0.0495
+Discrimination-KS	0.75
+Balance/Exposure 	28.67 B/41.65 B
