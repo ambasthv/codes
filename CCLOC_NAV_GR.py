@@ -135,8 +135,8 @@ if uploaded_file is not None:
             # ====================== RESULT SUMMARY + CHART ======================
             st.subheader("Result Summary")
 
-            fig, ax = plt.subplots(figsize=(4.8, 2.6))
-            colors = ['#4CAF50', '#FF9800', '#F44336']
+            fig, ax = plt.subplots(figsize=(3.8, 2.0))
+            colors = ["#4CAF50", '#FF9800', '#F44336']
             ax.bar(breach_count.keys(), breach_count.values(), color=colors)
             ax.set_title(f"Breach Summary - {original_quarter_name}", fontsize=11, pad=10)
             ax.set_ylabel("Number of Metrics", fontsize=9)
@@ -155,14 +155,10 @@ if uploaded_file is not None:
 
             st.markdown("#### Key Observations")
             summary_text = f"""
-For the **GFB** portfolio we observed **Soft Breach** for **{soft_text}**  
-and **Hard Breach** for **{hard_text}**.  
-
+For the **GFB** portfolio we observed **Soft Breach** for **{soft_text}** and **Hard Breach** for **{hard_text}**.  
 The **{no_text}** metrics do not show any breaches.  
 
 The CCLOC risk rating template was originally developed as a qualitative scorecard with categorical data. 
 Also, this portfolio segment has a very low rate of actual default that comes in significantly lower than the predicted default embedded in the risk ratings.
 """
             st.markdown(summary_text)
-
-            st.success(f"✅ {original_quarter_name} Analysis completed successfully for sheet '{tab_name}'")
