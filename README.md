@@ -1,103 +1,158 @@
-Analyzing a dataset with 4000 columns (high-dimensional / “wide” data) is a common challenge — especially with Parquet files from genomics, finance, sensor/IoT, or feature-rich ML datasets. Pandas often struggles here due to memory usage and slow operations on full correlation matrices or describe() calls.
-Recommended Approach (2026 Best Practices)
-Use Polars (fastest & most memory-efficient) or PyArrow instead of plain Pandas. They support column pruning (read only what you need), lazy evaluation, and excellent Parquet support.
-1. First: Inspect the file without loading everything (critical for 4000 columns)
-import pyarrow.parquet as pq
+# ================================================
+# RISK ANALYSIS SCRIPT - Complete Version
+# 70,000 rows | 5 columns
+# Run this entire script step by step
+# ================================================
 
-# Quick metadata & schema (super fast, <1 second even for huge files)
-metadata = pq.read_metadata('your_file.parquet')
-schema = pq.read_schema('your_file.parquet')
-
-print(f"Rows: {metadata.num_rows:,}")
-print(f"Columns: {metadata.num_columns:,}")
-print("\nSchema preview:")
-print(schema)  # Shows column names + dtypes
-2. Load efficiently with Polars (recommended over pandas)
-import polars as pl
-
-# Lazy scan = doesn't load until you call .collect()
-df = pl.scan_parquet('your_file.parquet')
-
-# Option A: Read ONLY the columns you care about
-important_cols = ['target', 'col_1', 'col_2'] + [f'feature_{i}' for i in range(100)]  # example
-df_subset = df.select(important_cols).collect()
-
-# Option B: Read everything but with memory-efficient settings
-df = pl.scan_parquet(
-    'your_file.parquet',
-    parallel='columns'          # faster for wide files
-).collect(streaming=True)       # processes in chunks
-Pro tip: Always use columns=[...] or .select() — it drastically reduces I/O and RAM.
-3. Quick Exploratory Data Analysis (EDA) for 4000 columns
-# 1. Basic summary stats (very fast in Polars)
-summary = df.describe()          # count, mean, std, min, max, etc.
-print(summary)
-
-# 2. Missing values % per column (key for wide data)
-missing_pct = (
-    df.null_count()
-    .transpose(include_header=True)
-    .rename({"column": "feature", "value": "null_count"})
-    .with_columns((pl.col("null_count") / df.height * 100).alias("missing_pct"))
-    .sort("missing_pct", descending=True)
-)
-print(missing_pct.head(50))   # top 50 worst columns
-
-# 3. Remove useless columns in one line
-useful_df = df.select(
-    pl.all().filter(
-        (pl.all().is_null().mean() < 0.9) &          # <90% missing
-        (pl.all().n_unique() > 1)                     # not constant
-    )
-)
-4. Handle high dimensionality
-A. Low-variance / constant features (remove noise):
-# Variance filter (numeric columns only)
-numeric_cols = [col for col in df.columns if df.select(pl.col(col)).dtypes[0] in (pl.Float64, pl.Int64)]
-low_var = (
-    df.select(numeric_cols)
-    .std()
-    .transpose(include_header=True)
-    .filter(pl.col("value") < 0.01)   # adjust threshold
-)
-print("Low-variance features:", low_var["column"].to_list())
-B. Correlation analysis (don’t compute 4000×4000 matrix!):
-# Sample rows + subset of columns
-corr_subset = df.sample(10_000).select(numeric_cols[:200]).corr()
-print(corr_subset)   # still manageable
-C. Dimensionality reduction (PCA / UMAP) — the real power move:
-from sklearn.decomposition import PCA
+import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import os
+from datetime import datetime
 
-# Convert only numeric part to numpy (or use Polars .to_numpy())
-X = df.select(numeric_cols).to_numpy()   # or sample first!
+print("=== Starting Risk Analysis ===\n")
 
-pca = PCA(n_components=50)               # keep 50 principal components
-X_pca = pca.fit_transform(X)
+# ================================================
+# Block 1: Convert Polars to Pandas + Prepare Data
+# ================================================
+print("Block 1: Preparing Data...")
+df = df_subset.to_pandas()                    # Convert once
+df['Date'] = pd.to_datetime(df['Date'])       # Ensure datetime
+print("Data Ready → Shape:", df.shape)
+print(df.dtypes)
+print("-" * 50)
 
-print("Explained variance ratio:", pca.explained_variance_ratio_.cumsum())
-5. Alternative tools if data is truly massive
-Library
-Best for
-When to use
-Polars
-Speed + wide tables
-Most cases (recommended)
-PyArrow
-Schema inspection + column pruning
-First look + selective reads
-Dask
->RAM datasets
-Millions of rows + 4000 cols
-DuckDB
-SQL queries on Parquet
-You prefer SQL
-Example with Dask:
-import dask.dataframe as dd
-ddf = dd.read_parquet('your_file.parquet', columns=important_cols)
-Next step — tell me more!
-To give you even better code:
-	•	How many rows does the file have?
-	•	Mostly numeric, categorical, or mixed?
-	•	What is your goal? (EDA, feature selection, ML model, statistics, visualization?)
-Drop that info and I’ll give you a complete ready-to-run notebook-style script tailored exactly to your data.
+# ================================================
+# Block 2: Basic Statistical Summary
+# ================================================
+print("Block 2: Basic Statistical Summary")
+stats = df[['Balance', 'Expos']].describe().round(2)
+print(stats)
+print("-" * 50)
+
+# ================================================
+# Block 3: Distribution Metrics
+# ================================================
+print("Block 3: Distribution Metrics")
+dist = pd.DataFrame({
+    'Balance': {
+        'Mean': df['Balance'].mean(),
+        'Median': df['Balance'].median(),
+        'Std': df['Balance'].std(),
+        'Skew': df['Balance'].skew(),
+        'Min': df['Balance'].min(),
+        'Max': df['Balance'].max()
+    },
+    'Expos': {
+        'Mean': df['Expos'].mean(),
+        'Median': df['Expos'].median(),
+        'Std': df['Expos'].std(),
+        'Skew': df['Expos'].skew(),
+        'Min': df['Expos'].min(),
+        'Max': df['Expos'].max()
+    }
+}).round(2)
+print(dist)
+print("-" * 50)
+
+# ================================================
+# Block 4: Analysis by Riskunitname
+# ================================================
+print("Block 4: Analysis by Riskunitname")
+by_risk = df.groupby('Riskunitname').agg({
+    'Balance': ['count','sum','mean','median'],
+    'Expos': ['sum','mean']
+}).round(2)
+print(by_risk)
+print("-" * 50)
+
+# ================================================
+# Block 5: Analysis by Model Routing
+# ================================================
+print("Block 5: Analysis by Model Routing")
+by_model = df.groupby('Model routing').agg({
+    'Balance': ['count','sum','mean'],
+    'Expos': ['sum','mean']
+}).round(2)
+print(by_model)
+print("-" * 50)
+
+# ================================================
+# Block 6: Daily Time-based Trend
+# ================================================
+print("Block 6: Daily Trend (Last 10 days)")
+df_daily = df.set_index('Date').resample('D').agg({
+    'Balance':'sum', 
+    'Expos':'sum'
+}).round(2)
+print(df_daily.tail(10))
+print("-" * 50)
+
+# ================================================
+# Block 7: Probability Density Function (PDF) Graphs
+# ================================================
+print("Block 7: Creating PDF Histograms...")
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+plt.hist(df['Balance'], bins=50, density=True, color='blue', alpha=0.7, edgecolor='black')
+plt.title('Probability Density Function - Balance')
+plt.xlabel('Balance')
+plt.ylabel('Density')
+
+plt.subplot(1, 2, 2)
+plt.hist(df['Expos'], bins=50, density=True, color='green', alpha=0.7, edgecolor='black')
+plt.title('Probability Density Function - Exposure')
+plt.xlabel('Exposure')
+plt.ylabel('Density')
+
+plt.tight_layout()
+plt.show()
+print("PDF Charts displayed")
+print("-" * 50)
+
+# ================================================
+# Block 8: Additional Charts for Stakeholder Presentation
+# ================================================
+print("Block 8: Creating Summary Charts...")
+plt.figure(figsize=(12, 10))
+
+# Top 10 Riskunitname by Balance
+plt.subplot(2, 2, 1)
+top10 = df.groupby('Riskunitname')['Balance'].sum().nlargest(10)
+top10.plot(kind='bar', color='skyblue')
+plt.title('Top 10 Riskunitname by Total Balance')
+plt.xticks(rotation=45)
+plt.ylabel('Total Balance')
+
+# Daily Trend
+plt.subplot(2, 2, 2)
+df_daily['Balance'].plot(color='blue', label='Balance')
+df_daily['Expos'].plot(color='red', label='Exposure')
+plt.title('Daily Balance vs Exposure Trend')
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+print("Summary Charts displayed")
+print("-" * 50)
+
+# ================================================
+# Block 9: Save All Results to One Excel File
+# ================================================
+print("Block 9: Saving to Excel...")
+folder = os.path.dirname('your_file.parquet')   # Change if your file is in different folder
+excel_path = os.path.join(folder, f"Risk_Analysis_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
+
+with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+    stats.to_excel(writer, sheet_name='Statistics')
+    dist.to_excel(writer, sheet_name='Distribution')
+    by_risk.to_excel(writer, sheet_name='By_Riskunitname')
+    by_model.to_excel(writer, sheet_name='By_ModelRouting')
+    df_daily.to_excel(writer, sheet_name='Daily_Trend')
+    df.head(50000).to_excel(writer, sheet_name='Raw_Data_Sample', index=False)
+
+print(f"✅ ALL ANALYSIS SAVED SUCCESSFULLY!")
+print(f"File Location: {excel_path}")
+print("\nYou can now copy this entire output + charts for your stakeholder presentation.")
