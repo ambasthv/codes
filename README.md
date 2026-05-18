@@ -1,35 +1,36 @@
 import pandas as pd
 
-# Assuming your DataFrame is already loaded
-# df = pd.read_csv('your_file.csv')   # or pd.read_parquet(), etc.
+# Assuming df is your original DataFrame
+df_top50 = df.head(50).copy()
 
-# Keep only first 50 rows
-df_top50 = df.head(50)
-
-# Create transposed DataFrame
+# Transpose
 transposed = df_top50.T.reset_index()
 
-# Add Data Type column
-transposed['Data_Type'] = transposed['index'].map(df.dtypes.astype(str))
+# Rename the first column (original column names)
+transposed = transposed.rename(columns={'index': 'Column_Name'})
 
-# Reorder columns: Column_Name, Data_Type, then the 50 rows
-cols = ['index', 'Data_Type'] + [i for i in range(50)]
-transposed = transposed[cols]
+# Add Data Type
+transposed['Data_Type'] = transposed['Column_Name'].map(df.dtypes.astype(str))
 
-# Rename columns nicely
+# Get all the data columns (the 50 rows) dynamically - this fixes the error
+data_columns = transposed.columns[1:-1]   # exclude Column_Name and Data_Type
+
+# Reorder columns properly
+final_cols = ['Column_Name', 'Data_Type'] + list(data_columns)
+transposed = transposed[final_cols]
+
+# Rename the data columns nicely
 transposed.columns = ['Column_Name', 'Data_Type'] + [f'Row_{i}' for i in range(50)]
 
-# Optional: Sort by Column_Name
+# Optional: Sort by column name
 transposed = transposed.sort_values('Column_Name').reset_index(drop=True)
 
 # Preview
 print(transposed.head(10))
+print(f"\nShape: {transposed.shape[0]} rows × {transposed.shape[1]} columns")
 
-# === Export ===
+# Export
 transposed.to_csv('transposed_top50_with_dtype.csv', index=False)
-
-# For Excel (this size is perfectly fine)
 transposed.to_excel('transposed_top50_with_dtype.xlsx', index=False)
 
-print("\nExport completed successfully!")
-print(f"Final shape: {transposed.shape[0]} rows x {transposed.shape[1]} columns")
+print("Export completed successfully!")
