@@ -1,89 +1,49 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import matplotlib.dates as mdates
-from datetime import datetime
-
-# ====================== ADVANCED STEP 4 ======================
-print("\n=== STEP 4: Advanced Visualization - Observation Count by RiskUnitName & Year/Month ===")
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Prepare data
 step4_long = (df_filtered.groupby(['YearMonth', 'riskunitname'])['obligor_id']
               .count()
               .reset_index(name='Observation_Count'))
 
-# Convert YearMonth to proper datetime for better plotting
 step4_long['Date'] = pd.to_datetime(step4_long['YearMonth'] + '-01')
 
-print(f"Total periods: {step4_long['YearMonth'].nunique()} (from {step4_long['YearMonth'].min()} to {step4_long['YearMonth'].max()})")
+# ====================== PLOTLY INTERACTIVE CHART ======================
+fig = px.line(step4_long, 
+              x='Date', 
+              y='Observation_Count',
+              color='riskunitname',
+              markers=True,
+              title='Interactive: Observation Count by RiskUnitName Over Time (2006-2025)',
+              labels={'Observation_Count': 'Number of Observations',
+                      'Date': 'Grade Date'},
+              hover_data={'YearMonth': True})
 
-# ============== OPTION 1: Best for many years - Line Chart (Recommended) ==============
-plt.figure(figsize=(16, 9))
+fig.update_traces(mode='lines+markers', marker=dict(size=6))
 
-sns.lineplot(data=step4_long, 
-             x='Date', 
-             y='Observation_Count', 
-             hue='riskunitname',
-             marker='o',
-             markersize=4,
-             linewidth=2.5,
-             palette="Set2")
+# Improve layout
+fig.update_layout(
+    height=700,
+    width=1400,
+    hovermode='x unified',           # Shows all lines on hover
+    legend=dict(title='Risk Unit Name', font=dict(size=12)),
+    title_font=dict(size=18),
+    xaxis=dict(
+        title='Grade Date (Year-Month)',
+        tickformat='%b %Y',
+        tickangle=45
+    ),
+    yaxis=dict(title='Observation Count')
+)
 
-plt.title('Observation Count by RiskUnitName Over Time\n(Year-Month from 2006 to 2025)', fontsize=16, pad=20)
-plt.xlabel('Grade Date (Year-Month)', fontsize=12)
-plt.ylabel('Number of Observations', fontsize=12)
+# Add range slider for easy navigation (very useful for 2006-2025)
+fig.update_layout(
+    xaxis_rangeslider_visible=True
+)
 
-# Format x-axis nicely (show every 6 or 12 months)
-plt.gca().xaxis.set_major_locator(mdates.YearLocator(1))      # Major tick every year
-plt.gca().xaxis.set_minor_locator(mdates.MonthLocator(6))     # Minor tick every 6 months
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-plt.xticks(rotation=45)
+fig.show()
 
-plt.grid(True, alpha=0.3)
-plt.legend(title='Risk Unit Name', title_fontsize=12, fontsize=11, bbox_to_anchor=(1.02, 1), loc='upper left')
-
-plt.tight_layout()
-plt.savefig('temp_charts/step4_advanced_line.png', dpi=300, bbox_inches='tight')
-plt.show()
-
-# ============== OPTION 2: Stacked Area Chart (Also Very Good) ==============
-plt.figure(figsize=(16, 9))
-step4_pivot = step4_long.pivot(index='Date', columns='riskunitname', values='Observation_Count').fillna(0)
-
-step4_pivot.plot(kind='area', stacked=True, figsize=(16,9), alpha=0.85, linewidth=0.5)
-plt.title('Stacked Trend - Observation Count by RiskUnitName (2006-2025)', fontsize=16, pad=20)
-plt.xlabel('Grade Date', fontsize=12)
-plt.ylabel('Observation Count', fontsize=12)
-plt.legend(title='Risk Unit Name', bbox_to_anchor=(1.02, 1), loc='upper left')
-plt.grid(True, alpha=0.3)
-
-plt.tight_layout()
-plt.savefig('temp_charts/step4_advanced_area.png', dpi=300, bbox_inches='tight')
-plt.show()
-
-# ============== OPTION 3: Facet (Small Multiples) - Cleanest for Comparison ==============
-g = sns.relplot(data=step4_long, 
-                x='Date', 
-                y='Observation_Count',
-                hue='riskunitname',
-                col='riskunitname',
-                kind='line',
-                col_wrap=2,
-                height=4,
-                aspect=2.2,
-                marker='o',
-                facet_kws={'sharey': False})
-
-g.set_axis_labels('Grade Date', 'Observation Count')
-g.set_titles("{col_name}")
-g.fig.suptitle('Observation Count by Risk Unit Name (Monthly Trend)', fontsize=16, y=1.02)
-
-plt.tight_layout()
-plt.savefig('temp_charts/step4_facet.png', dpi=300, bbox_inches='tight')
-plt.show()
-
-print("✅ Step 4 Advanced Charts Generated Successfully!")
-print("Three versions saved:")
-print("   • step4_advanced_line.png   (Recommended)")
-print("   • step4_advanced_area.png")
-print("   • step4_facet.png")
+# Save as HTML (interactive file)
+fig.write_html("Step4_Interactive_Plotly.html")
+print("✅ Plotly interactive chart saved as 'Step4_Interactive_Plotly.html'")
