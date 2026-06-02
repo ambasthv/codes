@@ -1,136 +1,69 @@
-✅ Here’s clean, robust Python code to handle your Lifestage mapping with proper cleaning.
-1. Lifestage Mapping Code
-import pandas as pd
-import numpy as np
+write easy python code for vs code, dont write big codes and fucntion. make it easy, easy to read, easy to interpret, and easy to run. 
+For performing our first step of segmentation analysis we would be using the following selected.
 
-# ====================== LIFESTAGE MAPPING ======================
-lifestage_mapping = {
-    # Original variations → Clean Mapped Name
-    "Angel / Seed Firm": "Other",
-    "Angel/Seed Firm": "Other",
-    "Angel/Seed Fund": "Other",
-    "Corp Tech": "Corp Tech",
-    "ET": "Emerging Tech",
-    "Early Stage": "Early Stage",
-    "Emerging Tech": "Emerging Tech",
-    "Emerging Tech or ET": "Emerging Tech",
-    "Large Corp": "Large Corporate",
-    "Large Corporate": "Large Corporate",
-    "Late Stage": "Late Stage",
-    "Mid Stage": "Mid Stage",
-    "Non-Niche": "Other",
-    "PCS": "Other",
-    "Private Bank": "Other",
-    "Private Equity": "Other",
-    "Private Equity Fiem": "Other",     # Typo in original
-    "Private Equity Firm": "Other",
-    "Sponsor Led Buyout": "Other",
-    "VC Firm": "Other",
-    "Venture Capital Firm": "Other",
-    "Wine": "Other"
-}
 
-# Add lowercase + stripped versions for robustness
-clean_mapping = {}
-for k, v in lifestage_mapping.items():
-    cleaned_key = str(k).strip().lower()
-    clean_mapping[cleaned_key] = v
+1.	Filter main df with “ID /BSD” in “model_routing” column
+2.	Create new data frame df_filt. And use this dataframe across the below codes. 
+3.	Identify Key Columns and its unique records
+4.	
+5.	Identify the lifestage and nichecode and naics_code code fields.
+6.	lifestage mapping needs to be done as table given below 
+7.	# Original variations → Clean Mapped Name
+8.	    "Angel / Seed Firm": "Other",
+9.	    "Angel/Seed Firm": "Other",
+10.	    "Angel/Seed Fund": "Other",
+11.	    "Corp Tech": "Corp Tech",
+12.	    "ET": "Emerging Tech",
+13.	    "Early Stage": "Early Stage",
+14.	    "Emerging Tech": "Emerging Tech",
+15.	    "Emerging Tech or ET": "Emerging Tech",
+16.	    "Large Corp": "Large Corporate",
+17.	    "Large Corporate": "Large Corporate",
+18.	    "Late Stage": "Late Stage",
+19.	    "Mid Stage": "Mid Stage",
+20.	    "Non-Niche": "Other",
+21.	    "PCS": "Other",
+22.	    "Private Bank": "Other",
+23.	    "Private Equity": "Other",
+24.	    "Private Equity Fiem": "Other",
+25.	    "Private Equity Firm": "Other",
+26.	    "Sponsor Led Buyout": "Other",
+27.	    "VC Firm": "Other",
+28.	    "Venture Capital Firm": "Other",
+29.	    "Wine": "Other"
 
-print("Mapping Dictionary Created (with cleaning support)")
+Clean and map the above list with lifestage, create new column with “lifestage_mapped”
+Show mapped lifestage distribution 
+Verify it “verification = df_filt[['lifestage_original', 'lifestage_clean', 'lifestage_mapped']].drop_duplicates().head(20)
+“
 
-2. Clean & Map Lifestage in `df_filt`
-# ------------------- Clean and Map Lifestage -------------------
-def clean_and_map_lifestage(df_filt):
-    print("\n=== Cleaning and Mapping Lifestage ===")
-    
-    # Step 1: Make a copy of original column
-    df_filt = df_filt.copy()
-    df_filt['lifestage_original'] = df_filt['lifestage'].astype(str)
-    
-    # Step 2: Clean the column
-    df_filt['lifestage_clean'] = (
-        df_filt['lifestage']
-        .astype(str)
-        .str.strip()                    # Remove leading/trailing spaces
-        .str.replace(r'\s+', ' ', regex=True)   # Replace multiple spaces with single
-        .str.replace(r'["\']', '', regex=True)  # Remove quotes if any
-    )
-    
-    # Step 3: Map using cleaned values (case insensitive)
-    df_filt['lifestage_mapped'] = df_filt['lifestage_clean'].str.lower().map(clean_mapping)
-    
-    # Step 4: Handle unmapped values
-    unmapped = df_filt[df_filt['lifestage_mapped'].isna()]['lifestage_clean'].unique()
-    if len(unmapped) > 0:
-        print(f"⚠️  Unmapped values found ({len(unmapped)} unique):")
-        print(unmapped)
-        # Optional: Map unknown to 'Other'
-        df_filt['lifestage_mapped'] = df_filt['lifestage_mapped'].fillna("Other")
-    else:
-        print("✅ All values successfully mapped!")
-    
-    # Final summary
-    print("\nMapped Lifestage Distribution:")
-    summary = df_filt['lifestage_mapped'].value_counts().sort_values(ascending=False)
-    print(summary)
-    
-    return df_filt
+3.	Identify the following target ratios within 
+Operating Performance columns name:
+grossmargin
+netmargin
+netsales
+totalassets
+Correlation between ratios (explain them, heatmap)
+Trend over Grade Year
+Trend over lifestage_mapped
 
-# Run the function
-df_filt = clean_and_map_lifestage(df_filt)
 
-3. Verify the Mapping
-# ------------------- Verification -------------------
-print("\n=== Verification: Sample of Original vs Mapped ===")
-verification = df_filt[['lifestage_original', 'lifestage_clean', 'lifestage_mapped']].drop_duplicates().head(20)
-print(verification)
+whenever your using above rations, in y axis or anywhere, explain that means, explain plots you create, box and histogram, whatever you create, explain in code as commented lines, withproper explanation,  what it means, how to interpret it  
 
-# Save verification table
-verification.to_excel(f"{output_folder}/Lifestage_Mapping_Verification.xlsx", index=False)
-
-4. Updated Cluster Analysis (Using New Mapped Lifestage)
-Since lifestage is the key parameter, let’s re-run cluster profile using the new clean mapped column:
-# ------------------- Updated Cluster Profile with Mapped Lifestage -------------------
-def updated_cluster_profile(df_filt):
-    print("\n=== Updated Cluster Profile by Mapped Lifestage ===")
-    
-    profile = df_filt.groupby(['lifestage_mapped', 'Cluster']).agg({
-        'cif': ['count', 'nunique'],
-        'grossmargin': 'mean',
-        'netmargin': 'mean',
-        'balance': ['mean', 'sum'],
-        'netsales': 'mean',
-        'totalassets': 'mean'
-    }).round(4)
-    
-    profile.columns = ['_'.join(col).strip() for col in profile.columns.values]
-    profile = profile.reset_index()
-    
-    print(profile.head(15))
-    profile.to_excel(f"{output_folder}/Cluster_Profile_by_Mapped_Lifestage.xlsx", index=False)
-    
-    # Bar plot
-    plt.figure(figsize=(14, 8))
-    sns.barplot(data=df_filt, x='lifestage_mapped', y='netmargin', hue='Cluster')
-    plt.title('Net Margin by Mapped Lifestage and Cluster')
-    plt.xticks(rotation=45)
-    plt.legend(title='Cluster')
-    plt.tight_layout()
-    plt.savefig(f"{output_folder}/NetMargin_by_MappedLifestage_Cluster.png", dpi=300)
-    plt.show()
-
-updated_cluster_profile(df_filt)
-
-Key Improvements Made:
-	•	Handles extra spaces, multiple spaces, quotes
-	•	Case-insensitive matching
-	•	Preserves original column
-	•	Creates clean version + mapped version
-	•	Safe fallback to "Other" for unknown values
-	•	Full verification table saved
-
-Would you like me to:
-	1	Save the updated df_filt as a new parquet file?
-	2	Add more columns to the mapping if you found new variations?
-	3	Re-run full analysis using lifestage_mapped as the main segment?
-Just paste the output of df_filt['lifestage'].unique() if you see any unmapped values, and I’ll refine the mapping.
+4.	Produce data distributions for each of the ratios “Operating Performance columns name”  segmented  by lifestage_mapped(we start with this and layer on other segments later)
+5.	Produce summary statistics table by segment for each ratio and lifestage_mapped
+6.	Produce charts for the distributions (box plots and histograms to begin with), make it lite so it can run, last code ran for about 7 hrs and didn’t result anything.
+7.	Produce interactive charts (something like is done in Tableau- but less code), same make it lite and quick run
+8.	 Use “grade_date” (year and month column) for above analysis. lifestage_mapped
+9.	Use column “cif” for unique counts, and against lifestage_mapped and nichecode and naics_code,
+10.	“balance” and “commitment” (dollar value col) analysis against lifestage_mapped and nichecode and naics_code, (show the table in full number and in billions, 
+11.	Create stacked bar chart using balance and commitment for lifestage_mapped.
+12.	Created stacked basr chart using balance and commitment by grade year. 
+13.	Correlation between ratios
+14.	Save correlation heatmap
+15.	Trend over Grade Year
+16.	Trend over Grade Year and Month
+17.	SHOW ALL CHARTS IN VS CODE, 
+18.	SHOW ALL TABLES IN VS CODE
+19.	SAVE ALL CHARTS AND TABLES IN EXCEL IN SAME FOLDER AS PARQUET FILE.
+20.	DON’T CREATE ANY FOLDER, JUST SAVE EXCEL AND CHARTS, to_excel.
