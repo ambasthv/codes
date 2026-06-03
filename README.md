@@ -1,26 +1,21 @@
-excel_sheets = {}
+import pandas as pd
+import os
 
-# Safely add only what exists in memory
-def safe_add(name, var_name):
-    try:
-        val = eval(var_name)
-        if isinstance(val, pd.DataFrame) and len(val) > 0:
-            excel_sheets[name] = val
-            print(f"  ✓ added: {name}")
-        else:
-            print(f"  ✗ empty or not a df: {name}")
-    except:
-        print(f"  ✗ not found: {name}")
+file_path = os.path.join(df_path, "output.xlsx")
 
-safe_add("LS_Mapped_Distribution",   "mapped_dist")
-safe_add("LS_Crosswalk_QA",          "crosswalk")
-safe_add("Balance_Stats_by_LS",      "tbl_bal_ls")
-safe_add("Balance_Stats_by_Year",    "tbl_bal_yr")
-safe_add("Commitment_Stats_by_LS",   "tbl_com_ls")
-safe_add("Commitment_Stats_by_Year", "tbl_com_yr")
-safe_add("CIF_Count_Year_LS",        "cif_count")
-safe_add("Correlation_Matrix",       "corr_matrix")
-safe_add("Overall_Stats_by_LS",      "overall_stats")
-safe_add("Distribution_Tests",       "dist_test_df")
+if excel_sheets and len(excel_sheets) > 0:
 
-print(f"\nTotal sheets ready: {len(excel_sheets)}")
+    with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+        for sheet_name, df in excel_sheets.items():
+
+            if not df.empty:
+                df.to_excel(
+                    writer,
+                    sheet_name=sheet_name[:31],  # Excel sheet name limit
+                    index=False
+                )
+
+    print(f"Saved: {file_path}")
+
+else:
+    print("excel_sheets dictionary is empty")
