@@ -1,6 +1,6 @@
-col = "lifestage"
+# Show all columns that contain 'bsd' (case-insensitive)
+matches = [col for col in df.columns if 'bsd' in col.lower()]
 
-if col in df.columns:
-   print(f"YES — '{col}' exists in the dataframe")
-else:
-   print(f"NO — '{col}' does not exist in the dataframe")
+print(f"Found {len(matches)} columns containing 'bsd':")
+for col in matches:
+   print(f"  → {col}")
