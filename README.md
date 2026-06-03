@@ -1,61 +1,56 @@
-✅ FIXED & EASY Code – I corrected both issues:
-	•	Fixed the summary NameError (moved save inside the loop)
-	•	Fixed blank charts (added plt.show() properly + tight_layout)
+So, lets re-write the code again form scratch. You missed the main essence of the analysis. So idea is, 
+Do and show the mathematical distribution analysis, 
+Produce and show data distributions for each of the ratios segmented 
+Produce and show summary statistics table by segment for each ratio 
+Produce and show charts for the distributions (box plots and histograms to begin with)
+show the chart (no fail chart), show the table, keep saving each table in separate sheets of excel and save in df_path. Simply save, don’t create folder.
+Imp columns to use for analysis are below,
+•	cif
+•	grade_date
+•	commitment
+•	balance
+•	totalassets
+•	netsales
+•	grossmargin
+•	netmargin
+•	naics_code
+•	lifestage
+•	nichecode
+Now ask is: 
+1.	dataframe to use for all analysis is df_filt
+2.	do mapping of lifestage to lifestage_mapped (create this column), below is the mapping table, 
+    "Angel / Seed Firm": "Other",
+    "Angel/Seed Firm": "Other",
+    "Angel/Seed Fund": "Other",
+    "Corp Tech": "Corp Tech",
+    "ET": "Emerging Tech",
+    "Early Stage": "Early Stage",
+    "Emerging Tech": "Emerging Tech",
+    "Emerging Tech or ET": "Emerging Tech",
+    "Large Corp": "Large Corporate",
+    "Large Corporate": "Large Corporate",
+    "Late Stage": "Late Stage",
+    "Mid Stage": "Mid Stage",
+    "Non-Niche": "Other",
+    "PCS": "Other",
+    "Private Bank": "Other",
+    "Private Equity": "Other",
+    "Private Equity Fiem": "Other",
+    "Private Equity Firm": "Other",
+    "Sponsor Led Buyout": "Other",
+    "VC Firm": "Other",
+    "Venture Capital Firm": "Other",
+    "Wine": "Other"
+•	Clean and Map Lifestage
+•	Mapped Lifestage Distribution
+•	Verification
 
-Copy & Run these corrected sections one by one in VS Code
-1. First — Make sure imports and df_filt are ready
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import os
+3.	with the above lifestage_mapped, do further analysis as below,
+a.	do (Distributions & Summary Stats) mathematical distribution and statistical analysis lifestage_mapped, year, balance. Create chart/histogram/boxplot
+b.	do (Distributions & Summary Stats) mathematical distribution and statistical analysis lifestage_mapped, year, commitment. Create chart/histogram/boxplot
+c.	do (Distributions & Summary Stats) mathematical distribution and statistical analysis lifestage_mapped, year, and each ratios separately. Create chart/histogram/boxplot
+d.	Unique CIF Count year wise for lifestage_mapped
+e.	Correlation of ratios, heatmap 
+f.	Each separate trend chart for balance , commitment over year, lifestage_mapped, ratios, over years.
 
-# Make sure these are already run from previous cells
-print("df_filt shape:", df_filt.shape)
-print("lifestage_mapped unique:", df_filt['lifestage_mapped'].unique())
 
-2. Fixed Summary Statistics + Excel Save
-ratios = ['grossmargin', 'netmargin', 'netsales', 'totalassets']
-
-for ratio in ratios:
-    print(f"\n=== Summary for {ratio} by Lifestage_Mapped ===")
-    
-    summary = df_filt.groupby('lifestage_mapped')[ratio].describe().round(4)
-    print(summary)
-    
-    # FIXED: Save inside the loop
-    save_path = os.path.join(os.path.dirname(df_path), f"{ratio}_summary_by_lifestage.xlsx")
-    summary.to_excel(save_path)
-    print(f"✅ Saved: {save_path}")
-
-3. Fixed Charts (Box Plot + Histogram) – Now they will show
-for ratio in ratios:
-    print(f"\nCreating charts for {ratio}...")
-    
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-    
-    # Box Plot
-    sns.boxplot(data=df_filt, x='lifestage_mapped', y=ratio, ax=axes[0])
-    axes[0].set_title(f"Box Plot - {ratio} by Lifestage\n(Shows spread, median, and outliers)")
-    axes[0].tick_params(axis='x', rotation=45)
-    
-    # Histogram
-    sns.histplot(data=df_filt, x=ratio, hue='lifestage_mapped', kde=True, ax=axes[1])
-    axes[1].set_title(f"Distribution - {ratio}\n(Shows how values are spread)")
-    
-    plt.tight_layout()
-    
-    # Save chart
-    chart_path = os.path.join(os.path.dirname(df_path), f"{ratio}_distribution.png")
-    plt.savefig(chart_path, dpi=200, bbox_inches='tight')
-    print(f"✅ Chart saved: {chart_path}")
-    
-    plt.show()          # This should now show the chart in VS Code
-
-Quick Fix Tips for VS Code:
-	1	If charts still blank → Add this at the very top of your notebook: %matplotlib inline
-	2	
-	3	Run cell by cell — Don’t run the whole script at once.
-	4	After running the fixed code above, check the folder where your .parquet file is — you should now see Excel files and PNG charts.
-
-Would you like me to also give the fixed Cluster Analysis code with the same improvements?
-Just reply “Yes” and I’ll give you the clean fixed version for cluster characteristics by lifestage_mapped.
