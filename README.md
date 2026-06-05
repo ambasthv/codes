@@ -1,36 +1,37 @@
-Great chart! Let me explain everything you see here.
+Great chart! Here’s the simple explanation.
 
-First — what is Gross Margin?
+What you’re looking at
 
-Gross Margin = (Revenue - Cost of Goods) / Revenue × 100
+Every bar = a range of gross margin values. Height = how many companies fall in that range. Colours = lifestages.
 
-So it’s a percentage. 50 means 50%. Positive = making money. Negative = losing money before even paying rent, salaries, or interest.
+The hovered tooltip tells you:
 
-Reading YOUR chart — Large Corporate (hovered)
+Early Stage, gross margin between -10 to 10 = 21,763 companies
 
-Max:          100   ← some Large Corps have perfect 100% margin
-Upper fence:  100   ← anything above is outlier (capped here)
-Q3:           71    ← 75% of Large Corps are BELOW 71% margin
-Median:       53    ← typical Large Corp earns 53% gross margin
-Q1:           32    ← 25% of Large Corps are BELOW 32% margin
-Lower fence: -26    ← below this = outlier territory
-Min:        -495    ← worst Large Corp had -495% gross margin!
+That’s a massive number sitting right at breakeven — neither profitable nor loss-making.
+
+Reading left to right
+
+-500 to -100  →  Very thin flat bars
+                 Few companies, but deeply loss-making
+                 Mostly Early Stage (red)
+
+-100 to 0     →  Bars slowly getting taller
+                 Companies losing money but not catastrophically
+
+0 to 100      →  HUGE spike — the tall colourful bars on the right
+                 This is where MOST companies live
+                 Healthy gross margins between 0–100%
 
 
-What do NEGATIVE gross margins mean?
+The key story
 
-A company with -100% gross margin means for every $1 of revenue, they spent $2 just to produce it — before any other costs. They are burning cash at the production level.
+The chart is heavily right-skewed — the vast majority of companies (all colours) cluster between 0 and 100% gross margin. The long flat tail stretching to -500 represents a small but important group of loss-making companies.
 
-Common reasons:
+By lifestage — what stands out
 
-	•	Early Stage startups investing heavily to grow
-	•	Companies in distress
-	•	Data quality issues (check these records)
-
-What the chart tells you across lifestages
-
-The boxes for most lifestages sit above zero — healthy. But notice the long whiskers and dots shooting down to -200, -300, -495 — those are individual distressed companies worth flagging.
+Early Stage (red/orange) dominates everywhere — both in the healthy zone AND in the negative zone. This makes sense — Early Stage has the most companies overall, and some are naturally loss-making as they grow.
 
 One line for management
 
-“Most lifestages show healthy gross margins between 30–70%, but outliers with deeply negative margins exist across all segments — these are the companies requiring closest credit monitoring.”
+“The majority of our portfolio companies have healthy gross margins between 0–100%, but Early Stage drives both the highest volume and the most negative margin outliers — expected for growth-stage lending but worth monitoring.”
