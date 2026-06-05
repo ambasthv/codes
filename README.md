@@ -1,37 +1,26 @@
-Great chart! Here’s the simple explanation.
+Run these 3 checks one by one:
 
-What you’re looking at
+Check 1 — See the actual raw values
 
-Every bar = a range of gross margin values. Height = how many companies fall in that range. Colours = lifestages.
-
-The hovered tooltip tells you:
-
-Early Stage, gross margin between -10 to 10 = 21,763 companies
-
-That’s a massive number sitting right at breakeven — neither profitable nor loss-making.
-
-Reading left to right
-
--500 to -100  →  Very thin flat bars
-                 Few companies, but deeply loss-making
-                 Mostly Early Stage (red)
-
--100 to 0     →  Bars slowly getting taller
-                 Companies losing money but not catastrophically
-
-0 to 100      →  HUGE spike — the tall colourful bars on the right
-                 This is where MOST companies live
-                 Healthy gross margins between 0–100%
+print(df["netmargin"].describe())
 
 
-The key story
+This shows min, max, mean instantly — confirms if -50,000 is real.
 
-The chart is heavily right-skewed — the vast majority of companies (all colours) cluster between 0 and 100% gross margin. The long flat tail stretching to -500 represents a small but important group of loss-making companies.
+Check 2 — Find those extreme rows
 
-By lifestage — what stands out
+extreme = df[df["netmargin"] < -1000][["cif", "lifestage_mapped", "year", "netmargin"]].sort_values("netmargin")
+print(extreme.head(20))
 
-Early Stage (red/orange) dominates everywhere — both in the healthy zone AND in the negative zone. This makes sense — Early Stage has the most companies overall, and some are naturally loss-making as they grow.
 
-One line for management
+This shows exactly which CIFs have extreme values and which year/lifestage they belong to.
 
-“The majority of our portfolio companies have healthy gross margins between 0–100%, but Early Stage drives both the highest volume and the most negative margin outliers — expected for growth-stage lending but worth monitoring.”
+Check 3 — Is it a % or raw dollar?
+
+print(df["netmargin"].quantile([0.01, 0.25, 0.50, 0.75, 0.99]))
+
+
+If 99th percentile is around 0–100 → it’s a percentage (normal).
+If values are in thousands → it’s a raw dollar amount stored in the wrong column — data issue.
+
+Share the output of Check 1 here and I’ll tell you exactly what’s wrong and how to fix it — whether it needs capping, scaling, or those rows need filtering out before charting.
