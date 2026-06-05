@@ -1,165 +1,86 @@
+# =============================================================================
+# STEP 3b — COMMITMENT: Distribution & Stats by lifestage_mapped & year
+# =============================================================================
+import plotly.express as px
+import plotly.graph_objects as go
 
-# COMMITMENT: Distribution & Stats by lifestage_mapped & year
+col    = "commitment"
+COLORS = px.colors.qualitative.Set2   # fixes "colors not defined" error
 
-col = "commitment"
-
-# ── Summary stats 
+# ── Summary stats & save ──────────────────────────────────────────────────────
 tbl_com_ls = summary_stats(df, "lifestage_mapped", col)
+tbl_com_yr = summary_stats(df, "year", col)
 
-com_ls_sumcount = (
-    df.groupby("lifestage_mapped")[col]
-    .agg(sum="sum", count="count")
-    .reset_index()
+com_ls = (
+   df.groupby("lifestage_mapped")[col]
+   .agg(sum="sum", count="count")
+   .reset_index()
 )
-com_ls_sumcount["sum_billions"] = (com_ls_sumcount["sum"] / 1e9).round(3)
+com_ls["sum_billions"] = (com_ls["sum"] / 1e9).round(2)
 
 excel_sheets["Commitment_Stats_by_LS"]     = tbl_com_ls
-excel_sheets["Commitment_Sum_Count_by_LS"] = com_ls_sumcount
-
-tbl_com_yr = summary_stats(df, "year", col)
 excel_sheets["Commitment_Stats_by_Year"]   = tbl_com_yr
+excel_sheets["Commitment_Sum_Count_by_LS"] = com_ls
 
-print(com_ls_sumcount.to_string(index=False))
+# ── Chart 1: Count by year & lifestage (horizontal bar) ──────────────────────
+com_count = df.groupby(["year","lifestage_mapped"]).size().reset_index(name="count")
+com_count["year_str"] = com_count["year"].astype(int).astype(str)
 
-# ── Chart 1: Line chart — CIF Count by Year AND Lifestage 
-
-com_count_yr_ls = (
-    df.groupby(["year", "lifestage_mapped"])[col]
-    .count()
-    .reset_index(name="cif_count")
-)
-
-fig = go.Figure()
-years_sorted = sorted(com_count_yr_ls["year"].dropna().unique())
-
-for i, yr in enumerate(years_sorted):
-    sub = com_count_yr_ls[com_count_yr_ls["year"] == yr]
-    fig.add_trace(go.Scatter(
-        x=sub["lifestage_mapped"],
-        y=sub["cif_count"],
-        mode="lines+markers",
-        name=str(int(yr)),
-        line=dict(width=2, color=colors[i % len(colors)]),
-        marker=dict(size=7),
-        hovertemplate=(
-            f"<b>Year: {int(yr)}</b><br>"
-            "Lifestage: %{x}<br>"
-            "Count: %{y:,}<extra></extra>"
-        ),
-    ))
-
-fig.update_layout(
-    title=dict(
-        text="Commitment — CIF Count by Lifestage & Year<br>"
-             "<sup>Click legend (year) to show/hide — each line = one year</sup>",
-        font=dict(size=15),
-    ),
-    xaxis=dict(title="Lifestage", tickangle=-35),
-    yaxis=dict(title="CIF Count"),
-    legend=dict(title="Year", orientation="v", x=1.01, y=1, xanchor="left"),
-    hovermode="x unified",
-    template="plotly_white",
-    height=500,
-)
+fig = px.bar(com_count, x="lifestage_mapped", y="count", color="year_str",
+            barmode="group", text="count",
+            title="Commitment — CIF Count by Lifestage & Year",
+            labels={"lifestage_mapped":"Lifestage","count":"Count","year_str":"Year"},
+            template="plotly_white", height=450)
+fig.update_traces(texttemplate="%{text:,}", textposition="outside", textfont_size=8)
+fig.update_layout(xaxis_tickangle=-30)
 fig.show()
 
+# ── Chart 2: Total commitment sum by lifestage ────────────────────────────────
+com_ls_sorted = com_ls.sort_values("sum_billions", ascending=False)
 
-# ── Chart 2: Clustered column — Sum of Commitment by Lifestage
-fig = go.Figure()
-fig.add_trace(go.Bar(
-    x=com_ls_sumcount["lifestage_mapped"],
-    y=com_ls_sumcount["sum_billions"],
-    marker_color=px.colors.qualitative.Set1[:len(com_ls_sumcount)],
-    text=[f"{v:.2f}B" for v in com_ls_sumcount["sum_billions"]],
-    textposition="outside",
-    hovertemplate="Lifestage: %{x}<br>Sum Commitment: %{y:.3f}B<extra></extra>",
-))
-fig.update_layout(
-    title=dict(
-        text="Commitment — Total Sum by Lifestage (Billions)<br>"
-             "<sup>Hover for exact values</sup>",
-        font=dict(size=15),
-    ),
-    xaxis=dict(title="Lifestage", tickangle=-35),
-    yaxis=dict(title="Sum of Commitment (Billions $)",
-               tickformat=".2f",
-               ticksuffix="B"),
-    template="plotly_white",
-    height=500,
-)
+fig = px.bar(com_ls_sorted, x="lifestage_mapped", y="sum_billions",
+            text="sum_billions",
+            title="Commitment — Total Sum by Lifestage (Billions)",
+            labels={"lifestage_mapped":"Lifestage","sum_billions":"Sum (B)"},
+            template="plotly_white", height=430)
+fig.update_traces(texttemplate="%{text:.2f}B", textposition="outside")
+fig.update_layout(xaxis_tickangle=-30, yaxis_ticksuffix="B",
+                 xaxis=dict(categoryorder="total descending"))
 fig.show()
 
-
-# ── Chart 3: Histogram — Commitment by Lifestage 
+# ── Chart 3: Histogram by lifestage ──────────────────────────────────────────
 plot_df = df[["lifestage_mapped", col]].dropna().copy()
-plot_df[col] = clip_outliers(plot_df[col])
-plot_df["commitment_billions"] = plot_df[col] / 1e9
+plot_df["com_M"] = clip_outliers(plot_df[col]) / 1e6   # millions
 
-fig = go.Figure()
-for i, ls in enumerate(LIFESTAGES):
-    sub = plot_df[plot_df["lifestage_mapped"] == ls]["commitment_billions"]
-    fig.add_trace(go.Histogram(
-        x=sub,
-        name=ls,
-        opacity=0.6,
-        nbinsx=30,
-        hovertemplate=f"<b>{ls}</b><br>Commitment: %{{x:.2f}}B<br>Count: %{{y}}<extra></extra>",
-    ))
-fig.update_layout(
-    barmode="overlay",
-    title=dict(
-        text="Commitment Histogram by Lifestage<br>"
-             "<sup>Click legend to show/hide lifestages</sup>",
-        font=dict(size=15),
-    ),
-    xaxis=dict(title="Commitment (Billions $)"),
-    yaxis=dict(title="Frequency"),
-    legend=dict(title="Lifestage", x=1.01, xanchor="left"),
-    template="plotly_white",
-    height=500,
-)
+fig = px.histogram(plot_df, x="com_M", color="lifestage_mapped",
+                  nbins=30, barmode="overlay", opacity=0.6,
+                  title="Commitment — Histogram by Lifestage",
+                  labels={"com_M":"Commitment (Millions $)","lifestage_mapped":"Lifestage"},
+                  template="plotly_white", height=430)
+fig.update_layout(xaxis_ticksuffix="M")
 fig.show()
 
-# ── Chart 4: Boxplot by Year 
+# ── Chart 4: Boxplot by year + outlier threshold line ────────────────────────
 plot_yr = df[["year", col]].dropna().copy()
-plot_yr[col] = clip_outliers(plot_yr[col])
-plot_yr["commitment_billions"] = plot_yr[col] / 1e9
+plot_yr["com_M"]    = clip_outliers(plot_yr[col]) / 1e6
 plot_yr["year_str"] = plot_yr["year"].astype(int).astype(str)
 
-fig = go.Figure()
-for i, yr in enumerate(sorted(plot_yr["year_str"].unique())):
-    sub = plot_yr[plot_yr["year_str"] == yr]["commitment_billions"]
-    fig.add_trace(go.Box(
-        y=sub,
-        name=yr,
-        marker_color=colors[i % len(colors)],
-        boxmean=True,
-        hovertemplate=f"<b>Year: {yr}</b><br>Commitment: %{{y:.2f}}B<extra></extra>",
-    ))
-fig.update_layout(
-    title=dict(
-        text="Commitment — Boxplot by Year<br>"
-             "<sup>Click legend to show/hide years | Dot inside box = mean</sup>",
-        font=dict(size=15),
-    ),
-    xaxis=dict(title="Year"),
-    yaxis=dict(title="Commitment (Billions $)", tickformat=".2f", ticksuffix="B"),
-    legend=dict(title="Year", x=1.01, xanchor="left"),
-    template="plotly_white",
-    height=500,
-)
-fig.show()
+# Outlier threshold (upper fence) per year
+q1 = plot_yr.groupby("year_str")["com_M"].quantile(0.25)
+q3 = plot_yr.groupby("year_str")["com_M"].quantile(0.75)
+upper_fence = q3 + 1.5 * (q3 - q1)
 
+fig = px.box(plot_yr, x="year_str", y="com_M",
+            title="Commitment — Boxplot by Year",
+            labels={"year_str":"Year","com_M":"Commitment (Millions $)"},
+            template="plotly_white", height=450)
 
-# ── Chart 5: Overall histogram
-fig = px.histogram(
-    plot_yr, x="commitment_billions",
-    nbins=40,
-    marginal="rug",
-    title="Commitment — Overall Distribution<br><sup>Hover bars for exact counts</sup>",
-    labels={"commitment_billions": "Commitment (Billions $)"},
-    template="plotly_white",
-    color_discrete_sequence=["darkorange"],
-)
-fig.update_layout(height=500, yaxis_title="Frequency")
+# Red dashed outlier threshold line
+fig.add_trace(go.Scatter(
+   x=upper_fence.index, y=upper_fence.values,
+   mode="lines", name="Outlier Threshold",
+   line=dict(color="red", width=1.5, dash="dash"),
+   hovertemplate="Outlier threshold: %{y:.2f}M<extra></extra>",
+))
+fig.update_layout(yaxis_ticksuffix="M", xaxis_tickangle=-45)
 fig.show()
