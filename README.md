@@ -1,105 +1,122 @@
 # =============================================================================
-# DATA QUALITY CHECK — Invalid values across ratio columns
-# Add or remove columns from this list as needed
+# NET SALES / TOTAL ASSETS — Ratio Analysis
 # =============================================================================
 
-CHECK_COLS = ["grossmargin", "netmargin", "adjquick", "debttotnw"]
+# ── Calculate ratio ───────────────────────────────────────────────────────────
+df["sales_to_assets"] = np.where(
+   df["totalassets"] == 0, np.nan,          # avoid divide by zero
+   df["netsales"] / df["totalassets"]
+)
 
-# Sentinel/placeholder values commonly used as invalid markers
-SENTINEL_VALUES = [-99, -999, 999, 99, -9999, 9999, -1, 0, 99999, -99999]
+ratio = "sales_to_assets"
+print(f"Calculated {ratio}")
+print(f"Total records:  {df[ratio].notna().sum():,}")
+print(f"Null/zero denom:{df[ratio].isna().sum():,}")
+print(f"Negative count: {(df[ratio] < 0).sum():,}")
+print(f"Min: {df[ratio].min():.4f} | Max: {df[ratio].max():.4f}")
 
-# Special characters to scan for
-SPECIAL_CHARS = ['#', '@', '&', '*', '%', ';', '!', '?', '$', '/', '\\']
+# ── Clip for charts (1st-99th percentile display only) ───────────────────────
+q01 = df[ratio].quantile(0.01)
+q99 = df[ratio].quantile(0.99)
+plot_df = df[["cif","lifestage_mapped","year", ratio]].dropna(subset=[ratio]).copy()
+plot_clipped = plot_df[(plot_df[ratio] >= q01) & (plot_df[ratio] <= q99)].copy()
+plot_clipped["yr_str"] = plot_clipped["year"].astype(int).astype(str)
 
-results = {}
+print(f"\nDisplay range (1%-99%): {q01:.4f} to {q99:.4f}")
 
-for col in CHECK_COLS:
-   if col not in df.columns:
-       print(f"[SKIP] {col} not in df")
-       continue
+# ── Chart 1: Boxplot by Lifestage ─────────────────────────────────────────────
+fig = px.box(plot_clipped, x="lifestage_mapped", y=ratio,
+            color="lifestage_mapped",
+            title="Net Sales / Total Assets — Boxplot by Lifestage",
+            labels={"lifestage_mapped":"Lifestage", ratio:"Sales/Assets Ratio"},
+            template="plotly_white", height=480)
+fig.add_hline(y=0, line_dash="dash", line_color="red", line_width=1,
+             annotation_text="Zero line")
+fig.update_layout(xaxis_tickangle=-30, showlegend=False)
+show(fig, "SalesAssets_boxplot_lifestage")
 
-   series   = df[col]
-   raw      = df_filt[col]          # check raw source too (before numeric coercion)
-   issues   = {}
+# ── Chart 2: Boxplot by Year ──────────────────────────────────────────────────
+fig = px.box(plot_clipped, x="yr_str", y=ratio,
+            title="Net Sales / Total Assets — Boxplot by Year",
+            labels={"yr_str":"Year", ratio:"Sales/Assets Ratio"},
+            template="plotly_white", height=480)
+fig.add_hline(y=0, line_dash="dash", line_color="red", line_width=1,
+             annotation_text="Zero line")
+fig.update_layout(xaxis=dict(categoryorder="category ascending"),
+                 xaxis_tickangle=-45)
+show(fig, "SalesAssets_boxplot_year")
 
-   # ── 1. Basic counts ───────────────────────────────────────────────────────
-   issues["total_rows"]    = len(series)
-   issues["null_count"]    = series.isna().sum()
-   issues["null_pct"]      = round(series.isna().mean() * 100, 2)
+# ── Chart 3: Histogram by Lifestage ──────────────────────────────────────────
+fig = px.histogram(plot_clipped, x=ratio, color="lifestage_mapped",
+                  nbins=40, barmode="overlay", opacity=0.6,
+                  title="Net Sales / Total Assets — Histogram by Lifestage",
+                  labels={ratio:"Sales/Assets Ratio","lifestage_mapped":"Lifestage"},
+                  template="plotly_white", height=480)
+fig.add_vline(x=0, line_dash="dash", line_color="red", line_width=1,
+             annotation_text="Zero")
+show(fig, "SalesAssets_histogram_lifestage")
 
-   # ── 2. Sentinel / placeholder values ─────────────────────────────────────
-   for sv in SENTINEL_VALUES:
-       count = (series == sv).sum()
-       if count > 0:
-           issues[f"sentinel_{sv}"] = count
+# ── Chart 4: Negative vs Positive — scatter + box ────────────────────────────
+plot_clipped["value_type"] = plot_clipped[ratio].apply(
+   lambda x: "Negative" if x < 0 else "Positive"
+)
+fig = px.box(plot_clipped, x="lifestage_mapped", y=ratio,
+            color="value_type",
+            color_discrete_map={"Negative":"red","Positive":"teal"},
+            title="Net Sales / Total Assets — Negative vs Positive by Lifestage",
+            labels={"lifestage_mapped":"Lifestage", ratio:"Sales/Assets Ratio"},
+            template="plotly_white", height=480)
+fig.add_hline(y=0, line_dash="dash", line_color="black", line_width=1)
+fig.update_layout(xaxis_tickangle=-30)
+show(fig, "SalesAssets_neg_pos_lifestage")
 
-   # ── 3. Extreme values — beyond 3 standard deviations ─────────────────────
-   mean, std   = series.mean(), series.std()
-   extreme_pos = (series > mean + 3*std).sum()
-   extreme_neg = (series < mean - 3*std).sum()
-   issues["extreme_positive"] = extreme_pos
-   issues["extreme_negative"] = extreme_neg
+# ── IQR Outlier detection ─────────────────────────────────────────────────────
+q1, q3 = df[ratio].quantile(0.25), df[ratio].quantile(0.75)
+iqr     = q3 - q1
+lo, hi  = q1 - 1.5*iqr, q3 + 1.5*iqr
+outlier_mask = (df[ratio] < lo) | (df[ratio] > hi)
+outliers_df  = df[outlier_mask][["cif","lifestage_mapped","year","netsales","totalassets",ratio]].copy()
+outliers_df["flag"] = outliers_df[ratio].apply(lambda x: "Negative" if x < 0 else "Outlier High")
 
-   # ── 4. Hard extreme thresholds ────────────────────────────────────────────
-   issues["values_above_9999"]  = (series > 9999).sum()
-   issues["values_below_neg9999"] = (series < -9999).sum()
+print(f"\nOutliers detected: {len(outliers_df):,} ({outlier_mask.mean()*100:.1f}%)")
+print(f"Negative values:   {(df[ratio] < 0).sum():,}")
 
-   # ── 5. Zero values ────────────────────────────────────────────────────────
-   issues["zero_count"] = (series == 0).sum()
+# ── Summary stats ─────────────────────────────────────────────────────────────
+stats_ls = df.groupby("lifestage_mapped").agg(
+   unique_cif = ("cif",   "nunique"),
+   count      = (ratio,   "count"),
+   mean       = (ratio,   "mean"),
+   median     = (ratio,   "median"),
+   std        = (ratio,   "std"),
+   min        = (ratio,   "min"),
+   max        = (ratio,   "max"),
+   negative_count = (ratio, lambda x: (x < 0).sum()),
+).round(4).reset_index()
 
-   # ── 6. Negative values ────────────────────────────────────────────────────
-   issues["negative_count"] = (series < 0).sum()
+stats_yr = df.groupby("year").agg(
+   unique_cif = ("cif",   "nunique"),
+   count      = (ratio,   "count"),
+   mean       = (ratio,   "mean"),
+   median     = (ratio,   "median"),
+   negative_count = (ratio, lambda x: (x < 0).sum()),
+).round(4).reset_index()
 
-   # ── 7. String / non-numeric check on RAW column ──────────────────────────
-   raw_str     = raw.astype(str)
-   # Check for special characters
-   import re
-   special_pattern = r'[#@&*%;!?\$\\/]'
-   has_special = raw_str.str.contains(special_pattern, regex=True, na=False)
-   issues["special_char_count"] = has_special.sum()
-   if has_special.sum() > 0:
-       issues["special_char_examples"] = raw_str[has_special].unique()[:5].tolist()
+# Negative rows only
+negatives_df = df[df[ratio] < 0][["cif","lifestage_mapped","year","netsales","totalassets",ratio]].copy()
 
-   # Check for pure string values (letters in numeric column)
-   has_letters = raw_str.str.contains(r'[a-zA-Z]', regex=True, na=False)
-   issues["string_in_numeric"] = has_letters.sum()
-   if has_letters.sum() > 0:
-       issues["string_examples"] = raw_str[has_letters].unique()[:5].tolist()
+# ── Save to Excel ─────────────────────────────────────────────────────────────
+excel_path = os.path.join(CHART_DIR, "sales_to_assets_analysis.xlsx")
 
-   # Check for mixed values like "123abc" or "#N/A"
-   invalid_formats = raw_str.str.contains(r'^[^0-9\.\-]+$', regex=True, na=False)
-   issues["invalid_format_count"] = invalid_formats.sum()
-
-   results[col] = issues
-   print(f"\n{'='*50}")
-   print(f"  Column: {col}")
-   print(f"{'='*50}")
-   for k, v in issues.items():
-       print(f"  {k:<30} {v}")
-
-# ── Save summary to Excel ─────────────────────────────────────────────────────
-summary_rows = []
-for col, issues in results.items():
-   row = {"column": col}
-   row.update({k: str(v) for k, v in issues.items()})
-   summary_rows.append(row)
-
-dq_df = pd.DataFrame(summary_rows)
-dq_path = os.path.join(CHART_DIR, "data_quality_check.xlsx")
-
-with pd.ExcelWriter(dq_path, engine="openpyxl") as writer:
-   dq_df.to_excel(writer, sheet_name="DQ_Summary", index=False)
-   # Also save actual flagged rows per column
-   for col in CHECK_COLS:
-       if col not in df.columns: continue
-       flagged = df[
-           (df[col].isna()) |
-           (df[col].isin(SENTINEL_VALUES)) |
-           (df[col] > 9999) |
-           (df[col] < -9999)
-       ][["cif", "lifestage_mapped", "year", col]]
-       if len(flagged) > 0:
-           flagged.to_excel(writer, sheet_name=f"{col[:25]}_flagged", index=False)
-           print(f"\n  ✓ {col} flagged rows saved: {len(flagged):,}")
-
-print(f"\n✅ Data quality report saved to: {dq_path}")
+with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
+   try:
+       stats_ls.to_excel(writer,     sheet_name="Stats_by_Lifestage",  index=False)
+       stats_yr.to_excel(writer,     sheet_name="Stats_by_Year",       index=False)
+       outliers_df.to_excel(writer,  sheet_name="IQR_Outliers",        index=False)
+       negatives_df.to_excel(writer, sheet_name="Negative_Values",     index=False)
+       print(f"\n✅ Excel saved: {excel_path}")
+       print(f"   Stats_by_Lifestage  — {len(stats_ls)} rows")
+       print(f"   Stats_by_Year       — {len(stats_yr)} rows")
+       print(f"   IQR_Outliers        — {len(outliers_df):,} rows")
+       print(f"   Negative_Values     — {len(negatives_df):,} rows")
+   except Exception as e:
+       print(f"  ✗ Error: {e}")
