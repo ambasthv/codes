@@ -1,43 +1,105 @@
-print(df.groupby("lifestage_mapped")[ratio].apply(lambda x: (x < 0).sum()))
+# =============================================================================
+# DATA QUALITY CHECK — Invalid values across ratio columns
+# Add or remove columns from this list as needed
+# =============================================================================
 
+CHECK_COLS = ["grossmargin", "netmargin", "adjquick", "debttotnw"]
 
-plot_df = df[["lifestage_mapped", ratio]].dropna(subset=[ratio]).copy()
-q01 = plot_df[ratio].quantile(0.01)
-q99 = plot_df[ratio].quantile(0.99)
-plot_df = plot_df[(plot_df[ratio] >= q01) & (plot_df[ratio] <= q99)]
+# Sentinel/placeholder values commonly used as invalid markers
+SENTINEL_VALUES = [-99, -999, 999, 99, -9999, 9999, -1, 0, 99999, -99999]
 
-negatives = plot_df[plot_df[ratio] < 0]
-positives = plot_df[plot_df[ratio] >= 0]
+# Special characters to scan for
+SPECIAL_CHARS = ['#', '@', '&', '*', '%', ';', '!', '?', '$', '/', '\\']
 
-import plotly.graph_objects as go
+results = {}
 
-fig = go.Figure()
+for col in CHECK_COLS:
+   if col not in df.columns:
+       print(f"[SKIP] {col} not in df")
+       continue
 
-# Positive — boxplot per lifestage
-for ls in LIFESTAGES:
-    sub = positives[positives["lifestage_mapped"] == ls][ratio]
-    fig.add_trace(go.Box(y=sub, name=ls, marker_color="teal",
-                         showlegend=False, boxmean=True))
+   series   = df[col]
+   raw      = df_filt[col]          # check raw source too (before numeric coercion)
+   issues   = {}
 
-# Negative — scatter dots so even 1-2 values are visible
-fig.add_trace(go.Scatter(
-    x=negatives["lifestage_mapped"],
-    y=negatives[ratio],
-    mode="markers",
-    name="Negative values",
-    marker=dict(color="red", size=6, symbol="circle"),
-    hovertemplate="Lifestage: %{x}<br>Value: %{y:.2f}<extra></extra>",
-))
+   # ── 1. Basic counts ───────────────────────────────────────────────────────
+   issues["total_rows"]    = len(series)
+   issues["null_count"]    = series.isna().sum()
+   issues["null_pct"]      = round(series.isna().mean() * 100, 2)
 
-fig.add_hline(y=0, line_dash="dash", line_color="black", line_width=1)
+   # ── 2. Sentinel / placeholder values ─────────────────────────────────────
+   for sv in SENTINEL_VALUES:
+       count = (series == sv).sum()
+       if count > 0:
+           issues[f"sentinel_{sv}"] = count
 
-fig.update_layout(
-    title=f"{ratio} — Positive Boxplot + Negative Dots by Lifestage",
-    xaxis=dict(title="Lifestage", tickangle=-30),
-    yaxis=dict(title=f"{ratio} Value"),
-    template="plotly_white",
-    height=500,
-    hovermode="closest",
-)
+   # ── 3. Extreme values — beyond 3 standard deviations ─────────────────────
+   mean, std   = series.mean(), series.std()
+   extreme_pos = (series > mean + 3*std).sum()
+   extreme_neg = (series < mean - 3*std).sum()
+   issues["extreme_positive"] = extreme_pos
+   issues["extreme_negative"] = extreme_neg
 
-show(fig, f"{ratio}_pos_box_neg_dots")
+   # ── 4. Hard extreme thresholds ────────────────────────────────────────────
+   issues["values_above_9999"]  = (series > 9999).sum()
+   issues["values_below_neg9999"] = (series < -9999).sum()
+
+   # ── 5. Zero values ────────────────────────────────────────────────────────
+   issues["zero_count"] = (series == 0).sum()
+
+   # ── 6. Negative values ────────────────────────────────────────────────────
+   issues["negative_count"] = (series < 0).sum()
+
+   # ── 7. String / non-numeric check on RAW column ──────────────────────────
+   raw_str     = raw.astype(str)
+   # Check for special characters
+   import re
+   special_pattern = r'[#@&*%;!?\$\\/]'
+   has_special = raw_str.str.contains(special_pattern, regex=True, na=False)
+   issues["special_char_count"] = has_special.sum()
+   if has_special.sum() > 0:
+       issues["special_char_examples"] = raw_str[has_special].unique()[:5].tolist()
+
+   # Check for pure string values (letters in numeric column)
+   has_letters = raw_str.str.contains(r'[a-zA-Z]', regex=True, na=False)
+   issues["string_in_numeric"] = has_letters.sum()
+   if has_letters.sum() > 0:
+       issues["string_examples"] = raw_str[has_letters].unique()[:5].tolist()
+
+   # Check for mixed values like "123abc" or "#N/A"
+   invalid_formats = raw_str.str.contains(r'^[^0-9\.\-]+$', regex=True, na=False)
+   issues["invalid_format_count"] = invalid_formats.sum()
+
+   results[col] = issues
+   print(f"\n{'='*50}")
+   print(f"  Column: {col}")
+   print(f"{'='*50}")
+   for k, v in issues.items():
+       print(f"  {k:<30} {v}")
+
+# ── Save summary to Excel ─────────────────────────────────────────────────────
+summary_rows = []
+for col, issues in results.items():
+   row = {"column": col}
+   row.update({k: str(v) for k, v in issues.items()})
+   summary_rows.append(row)
+
+dq_df = pd.DataFrame(summary_rows)
+dq_path = os.path.join(CHART_DIR, "data_quality_check.xlsx")
+
+with pd.ExcelWriter(dq_path, engine="openpyxl") as writer:
+   dq_df.to_excel(writer, sheet_name="DQ_Summary", index=False)
+   # Also save actual flagged rows per column
+   for col in CHECK_COLS:
+       if col not in df.columns: continue
+       flagged = df[
+           (df[col].isna()) |
+           (df[col].isin(SENTINEL_VALUES)) |
+           (df[col] > 9999) |
+           (df[col] < -9999)
+       ][["cif", "lifestage_mapped", "year", col]]
+       if len(flagged) > 0:
+           flagged.to_excel(writer, sheet_name=f"{col[:25]}_flagged", index=False)
+           print(f"\n  ✓ {col} flagged rows saved: {len(flagged):,}")
+
+print(f"\n✅ Data quality report saved to: {dq_path}")
