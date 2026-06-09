@@ -1,96 +1,107 @@
-import pandas as pd
-import numpy as np
-import os
 
-# =============================================================================
-# FULL COMPARISON: CreditLens vs Manual Ratios
-# =============================================================================
 
-print("=== FULL DETAILED COMPARISON: CreditLens vs Manual ===\n")
+# NET SALES / TOTAL ASSETS RATIO ANALYSIS (FULL DATA)
 
-ratio_pairs = {
-    'grossmargin': 'grossmargin_MANUALcalc',
-    'netmargin': 'netmargin_MANUALcalc'
-}
+# 1. Calculate Ratio 
+def calculate_sales_to_assets(df):
+    """Calculate Net Sales / Total Assets r"""
+    df = df.copy()
+    
+    df['sales_to_assets'] = np.where(
+        df['totalassets'] == 0, np.nan,
+        df['netsales'] / df['totalassets']
+    )
+    
+    print("Ratio 'sales_to_assets'")
+    print(f"   Valid ratios : {df['sales_to_assets'].notna().sum():.2f}")
+    print(f"   Null/Zero denom: {df['sales_to_assets'].isna().sum():.2f}")
+    return df
 
-for orig_col, manual_col in ratio_pairs.items():
-    if orig_col not in df.columns or manual_col not in df.columns:
-        print(f"⚠️ Skipping {orig_col} - column missing")
-        continue
+df = calculate_sales_to_assets(df)
+
+
+#2. Data Distribution Summary Table
+def create_distribution_table(df):
+    """Create detailed distribution table for the ratio"""
+    ratio = 'sales_to_assets'
     
-    print(f"\n{'='*70}")
-    print(f"DETAILED COMPARISON: {orig_col} (CreditLens)  vs  {manual_col} (Manual)")
-    print(f"{'='*70}")
-    
-    # Create aligned comparison dataframe by 'cif'
-    comp = df[['cif', orig_col, manual_col]].copy()
-    
-    # === 1. Basic Data Type & Structure ===
-    print(f"Data Type - CreditLens: {df[orig_col].dtype} | Manual: {df[manual_col].dtype}")
-    
-    # === 2. Statistical Summary ===
-    stats = pd.DataFrame({
-        'Metric': ['Count', 'Mean', 'Median', 'Std', 'Min', 'Max', 
-                   'Most Negative', 'Most Positive'],
-        'CreditLens': [
-            comp[orig_col].count(), comp[orig_col].mean(), comp[orig_col].median(),
-            comp[orig_col].std(), comp[orig_col].min(), comp[orig_col].max(),
-            comp[orig_col].min(), comp[orig_col].max()
+    dist_table = pd.DataFrame({
+        'Metric': [
+            'Total Records',
+            'Valid Records',
+            'Null Count',
+            'Zero Count',
+            'Negative Count',
+            'Positive Count',
+            'Min Value',
+            'Max Value',
+            'Mean',
+            'Median'
         ],
-        'Manual': [
-            comp[manual_col].count(), comp[manual_col].mean(), comp[manual_col].median(),
-            comp[manual_col].std(), comp[manual_col].min(), comp[manual_col].max(),
-            comp[manual_col].min(), comp[manual_col].max()
-        ]
-    }).round(6)
-    
-    print("\nStatistical Summary:")
-    print(stats)
-    
-    # === 3. Difference Analysis ===
-    comp['difference'] = comp[manual_col] - comp[orig_col]
-    comp['abs_diff'] = comp['difference'].abs()
-    comp['match_exact'] = np.isclose(comp[orig_col], comp[manual_col], atol=1e-6)
-    comp['match_rounded'] = np.isclose(comp[orig_col].round(4), comp[manual_col].round(4), atol=1e-4)
-    
-    print(f"\nExact Match Rate     : {comp['match_exact'].mean()*100:.2f}%")
-    print(f"Match after 4 decimal: {comp['match_rounded'].mean()*100:.2f}%")
-    print(f"Mean Absolute Diff   : {comp['abs_diff'].mean():.6f}")
-    
-    # === 4. Null vs Zero Analysis ===
-    null_zero = pd.DataFrame({
-        'Metric': ['Null in CreditLens', 'Null in Manual', 'Zero in CreditLens', 
-                   'Zero in Manual', 'Null in one but not other'],
-        'Count': [
-            comp[orig_col].isna().sum(),
-            comp[manual_col].isna().sum(),
-            (comp[orig_col] == 0).sum(),
-            (comp[manual_col] == 0).sum(),
-            ((comp[orig_col].isna()) != (comp[manual_col].isna())).sum()
+        'Value': [
+            len(df),
+            df[ratio].notna().sum(),
+            df[ratio].isna().sum(),
+            (df[ratio] == 0).sum(),
+            (df[ratio] < 0).sum(),
+            (df[ratio] > 0).sum(),
+            df[ratio].min(),
+            df[ratio].max(),
+            df[ratio].mean(),
+            df[ratio].median()
         ]
     })
-    print("\nNull & Zero Analysis:")
-    print(null_zero)
-    
-    # === 5. Top Differences ===
-    print("\nTop 5 Biggest Differences:")
-    top_diff = comp.nlargest(5, 'abs_diff')[['cif', orig_col, manual_col, 'difference']]
-    print(top_diff)
-    
-    # Save Everything to Excel
-    excel_path = os.path.join(os.path.dirname(df_path), f"Comparison_{orig_col}_vs_Manual.xlsx")
-    
-    with pd.ExcelWriter(excel_path) as writer:
-        stats.to_excel(writer, sheet_name="Summary_Stats", index=False)
-        null_zero.to_excel(writer, sheet_name="Null_Zero_Analysis", index=False)
-        top_diff.to_excel(writer, sheet_name="Top_Differences", index=False)
-        comp.to_excel(writer, sheet_name="Full_Row_by_Row", index=False)
-        
-        # Mismatches sheet
-        mismatches = comp[~comp['match_exact']].copy()
-        if not mismatches.empty:
-            mismatches.to_excel(writer, sheet_name="Mismatches_Only", index=False)
-    
-    print(f"✅ Full comparison saved to: {excel_path}\n")
 
-print("🎉 All detailed comparisons completed!")
+    print("\n Distribution Summary Table")
+    print(dist_table)
+    
+    # Save to Excel
+    dist_table.to_excel(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Distribution.xlsx"), index=False)
+    print("table saved to Excel")
+    return dist_table
+
+dist_table = create_distribution_table(df)
+
+
+# 3.  Box Plot by Lifestage
+def plot_box_by_lifestage(df):
+    """Box Plot by lifestage_mapped"""
+    fig = px.box(
+        df.dropna(subset=['sales_to_assets']),
+        x='lifestage_mapped',
+        y='sales_to_assets',
+        color='lifestage_mapped',
+        title="Net Sales / Total Assets - Box Plot by Lifestage (Mapped)",
+        labels={'sales_to_assets': 'Sales to Assets Ratio', 'lifestage_mapped': 'Lifestage'},
+        hover_data=['cif']
+    )
+    fig.update_layout(xaxis_tickangle=-45, template="plotly_white")
+    fig.show() 
+    
+    # Save as  HTML
+    fig.write_html(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Boxplot.html"))
+    print("Box Plot saved as HTML")
+
+plot_box_by_lifestage(df)
+
+
+#  4.  Histogram by Lifestage 
+def plot_histogram_by_lifestage(df):
+    """ Histogram by lifestage_mapped"""
+    fig = px.histogram(
+        df.dropna(subset=['sales_to_assets']),
+        x='sales_to_assets',
+        color='lifestage_mapped',
+        nbins=50,
+        title="Net Sales / Total Assets - Distribution by Lifestage (Mapped)",
+        labels={'sales_to_assets': 'Sales to Assets Ratio'},
+        hover_data=['cif'],
+        opacity=0.7
+    )
+    fig.update_layout(template="plotly_white", barmode='overlay')
+    fig.show()
+    
+    fig.write_html(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Histogram.html"))
+    print(" Histogram saved as HTML")
+
+plot_histogram_by_lifestage(df)
