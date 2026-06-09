@@ -2,132 +2,85 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import os
+from scipy.stats import mstats
 
 # =============================================================================
-# NET SALES / TOTAL ASSETS RATIO ANALYSIS
+# NET SALES / TOTAL ASSETS - With Winsorization (1%-99%)
 # =============================================================================
 
-# ------------------- 1. Calculate Ratio (Safe from Zero Division) -------------------
-def calculate_sales_to_assets(df):
-    """Calculate Net Sales / Total Assets with safe handling of zero/NaN denominator"""
+# ------------------- 1. Calculate Ratio + Winsorize -------------------
+def calculate_and_winsorize_ratio(df):
+    """Calculate ratio and create winsorized version"""
     df = df.copy()
     
+    # Raw Ratio
     df['sales_to_assets'] = np.where(
-        df['totalassets'] == 0, np.nan,                    # Avoid divide by zero
+        df['totalassets'] == 0, 
+        np.nan, 
         df['netsales'] / df['totalassets']
     )
     
-    print("✅ Ratio 'sales_to_assets' calculated successfully")
-    print(f"   Valid ratios : {df['sales_to_assets'].notna().sum():,}")
-    print(f"   Null/Zero denom: {df['sales_to_assets'].isna().sum():,}")
+    # Winsorization at 1% and 99%
+    valid_values = df['sales_to_assets'].dropna()
+    if len(valid_values) > 0:
+        df['sales_to_assets_winsor'] = mstats.winsorize(
+            df['sales_to_assets'], limits=[0.01, 0.01]
+        )
+        # Round to 2 decimal places
+        df['sales_to_assets'] = df['sales_to_assets'].round(2)
+        df['sales_to_assets_winsor'] = df['sales_to_assets_winsor'].round(2)
+    
+    print("✅ Ratio calculated and Winsorized (1%-99%)")
+    print(f"   Winsorized column created: sales_to_assets_winsor")
     return df
 
-df = calculate_sales_to_assets(df)
+# Run the function
+df = calculate_and_winsorize_ratio(df)
 
 
-# ------------------- 2. Data Distribution Summary Table -------------------
-def create_distribution_table(df):
-    """Create detailed distribution table for the ratio"""
-    ratio = 'sales_to_assets'
-    
-    dist_table = pd.DataFrame({
-        'Metric': [
-            'Total Records',
-            'Valid Records',
-            'Null Count',
-            'Zero Count',
-            'Negative Count',
-            'Positive Count',
-            'Min Value',
-            'Max Value',
-            'Mean',
-            'Median'
-        ],
-        'Value': [
-            len(df),
-            df[ratio].notna().sum(),
-            df[ratio].isna().sum(),
-            (df[ratio] == 0).sum(),
-            (df[ratio] < 0).sum(),
-            (df[ratio] > 0).sum(),
-            df[ratio].min(),
-            df[ratio].max(),
-            df[ratio].mean(),
-            df[ratio].median()
-        ]
-    })
-    
-    print("\n=== Distribution Summary Table ===")
-    print(dist_table)
-    
-    # Save to Excel
-    dist_table.to_excel(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Distribution.xlsx"), index=False)
-    print("✅ Distribution table saved to Excel")
-    return dist_table
+# ------------------- 2. Simple Distribution Table -------------------
+def show_distribution(df):
+    ratio = 'sales_to_assets_winsor'
+    print("\n=== Distribution Summary (Winsorized) ===")
+    print(f"Total Records     : {len(df):,}")
+    print(f"Valid Records     : {df[ratio].notna().sum():,}")
+    print(f"Null Count        : {df[ratio].isna().sum():,}")
+    print(f"Negative Count    : {(df[ratio] < 0).sum():,}")
+    print(f"Min               : {df[ratio].min():.2f}")
+    print(f"Max               : {df[ratio].max():.2f}")
+    print(f"Mean              : {df[ratio].mean():.2f}")
 
-dist_table = create_distribution_table(df)
+show_distribution(df)
 
 
 # ------------------- 3. Interactive Box Plot by Lifestage -------------------
-def plot_box_by_lifestage(df):
-    """Interactive Box Plot by lifestage_mapped"""
+def plot_box_lifestage(df):
     fig = px.box(
-        df.dropna(subset=['sales_to_assets']),
+        df.dropna(subset=['sales_to_assets_winsor']),
         x='lifestage_mapped',
-        y='sales_to_assets',
+        y='sales_to_assets_winsor',
         color='lifestage_mapped',
-        title="Net Sales / Total Assets - Box Plot by Lifestage (Mapped)",
-        labels={'sales_to_assets': 'Sales to Assets Ratio', 'lifestage_mapped': 'Lifestage'},
-        hover_data=['cif']  # Hover shows extra details
+        title="Net Sales / Total Assets (Winsorized 1-99%) - Box Plot by Lifestage",
+        labels={'sales_to_assets_winsor': 'Sales to Assets Ratio'}
     )
-    fig.update_layout(xaxis_tickangle=-45, template="plotly_white")
-    fig.show()   # Interactive in VS Code
-    
-    # Save as interactive HTML
-    fig.write_html(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Boxplot.html"))
-    print("✅ Interactive Box Plot saved as HTML")
+    fig.update_layout(xaxis_tickangle=-45)
+    fig.show()
+    fig.write_html(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Winsor_Boxplot.html"))
 
-plot_box_by_lifestage(df)
+plot_box_lifestage(df)
 
 
-# ------------------- 4. Interactive Histogram by Lifestage -------------------
-def plot_histogram_by_lifestage(df):
-    """Interactive Histogram by lifestage_mapped"""
+# ------------------- 4. Interactive Histogram -------------------
+def plot_histogram(df):
     fig = px.histogram(
-        df.dropna(subset=['sales_to_assets']),
-        x='sales_to_assets',
+        df.dropna(subset=['sales_to_assets_winsor']),
+        x='sales_to_assets_winsor',
         color='lifestage_mapped',
         nbins=50,
-        title="Net Sales / Total Assets - Distribution by Lifestage (Mapped)",
-        labels={'sales_to_assets': 'Sales to Assets Ratio'},
-        hover_data=['cif'],
-        opacity=0.7
-    )
-    fig.update_layout(template="plotly_white", barmode='overlay')
-    fig.show()
-    
-    fig.write_html(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Histogram.html"))
-    print("✅ Interactive Histogram saved as HTML")
-
-plot_histogram_by_lifestage(df)
-
-
-# ------------------- 5. Trend by Grade Year -------------------
-def plot_trend_by_year(df):
-    """Trend of ratio by Grade Year"""
-    trend = df.groupby('grade_year')['sales_to_assets'].mean().reset_index()
-    
-    fig = px.line(
-        trend,
-        x='grade_year',
-        y='sales_to_assets',
-        markers=True,
-        title="Net Sales / Total Assets Trend by Grade Year",
-        labels={'sales_to_assets': 'Average Sales to Assets Ratio'}
+        title="Net Sales / Total Assets (Winsorized) - Histogram by Lifestage",
+        labels={'sales_to_assets_winsor': 'Sales to Assets Ratio'}
     )
     fig.show()
-    
-    fig.write_html(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Trend_Year.html"))
-    print("✅ Trend chart saved as HTML")
+    fig.write_html(os.path.join(os.path.dirname(df_path), "Sales_to_Assets_Winsor_Histogram.html"))
 
-plot_trend_by_year(df)
+plot_histogram(df)
