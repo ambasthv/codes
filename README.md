@@ -1,30 +1,11 @@
-# =============================================================================
-# RAW VARIABLE CLEANING - Floor & Cap
-# =============================================================================
+# List of columns you want to check
+cols_to_check = ['default_ind_1yr', 'rbs', 'grade_date', 'year', 
+                 'lifestage_mapped', 'grossmargin_winsor', 
+                 'netmargin_winsor', 'sales_to_assets_winsor']
 
-vars_to_clean = ['totalassets', 'netsales', 'grossprofit', 'netprofit']
-
-for col in vars_to_clean:
-    if col not in df.columns:
-        continue
-    
-    # Create cleaned version
-    clean_col = f"{col}_cleaned"
-    df[clean_col] = df[col].copy()
-    
-    if col in ['totalassets', 'netsales']:
-        # Floor = 0
-        df.loc[df[clean_col] < 0, clean_col] = 0
-        
-    elif col in ['grossprofit', 'netprofit']:
-        # Floor = 0.25th percentile
-        floor_val = df[col].quantile(0.0025)
-        df.loc[df[clean_col] < floor_val, clean_col] = floor_val
-    
-    # Cap = 99.75th percentile for all
-    cap_val = df[col].quantile(0.9975)
-    df.loc[df[clean_col] > cap_val, clean_col] = cap_val
-    
-    print(f"✅ Cleaned {col} | Floor applied | Cap: {cap_val:.2f}")
-
-print("\nNew cleaned columns created: _cleaned")
+print("=== Column Check ===\n")
+for col in cols_to_check:
+    if col in df.columns:
+        print(f"✅ '{col}' → Exists | Type: {df[col].dtype} | Unique: {df[col].nunique()}")
+    else:
+        print(f"❌ '{col}' → MISSING")
