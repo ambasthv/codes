@@ -1,48 +1,42 @@
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import os
 
-print("=== Separate Correlation Analysis: Original vs Winsorized ===\n")
+# ====================== LIST THE COLUMNS YOU WANT ======================
+columns_to_export = [
+    'cif',
+    'grade_date',
+    'year',
+    'lifestage_mapped',
+    'grossmargin',
+    'grossmargin_winsor',
+    'grossmargin_winsor_bin5',
+    'netmargin',
+    'netmargin_winsor',
+    'netmargin_winsor_bin5',
+    'sales_to_assets',
+    'sales_to_assets_winsor',
+    'sales_to_assets_winsor_bin5',
+    'default_ind_1yr',
+    'grossmargin_flag',
+    'netmargin_flag',
+    'sales_to_assets_flag'
+]
 
-# ====================== 1. Original Ratios ======================
-original_ratios = ['grossmargin', 'netmargin', 'sales_to_assets']
-available_orig = [col for col in original_ratios if col in df.columns]
+# Keep only columns that actually exist
+available_cols = [col for col in columns_to_export if col in df.columns]
 
-if available_orig:
-    corr_orig = df[available_orig].corr().round(4)
-    
-    print("CORRELATION MATRIX - ORIGINAL RATIOS")
-    print(corr_orig)
-    
-    # Heatmap
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(corr_orig, annot=True, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='.3f')
-    plt.title('Correlation - Original Ratios')
-    plt.tight_layout()
-    plt.show()
-    
-    corr_orig.to_excel(os.path.join(os.path.dirname(df_path), "Correlation_Original_Ratios.xlsx"))
-    print("✅ Original correlation saved\n")
+# Create export dataframe
+export_df = df[available_cols].copy()
 
-# ====================== 2. Winsorized Ratios ======================
-winsor_ratios = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
-available_win = [col for col in winsor_ratios if col in df.columns]
+# Save to Excel
+output_path = os.path.join(os.path.dirname(df_path), "SELECTED_COLUMNS_EXPORT.xlsx")
 
-if available_win:
-    corr_win = df[available_win].corr().round(4)
-    
-    print("CORRELATION MATRIX - WINSORIZED RATIOS")
-    print(corr_win)
-    
-    # Heatmap
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(corr_win, annot=True, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='.3f')
-    plt.title('Correlation - Winsorized Ratios')
-    plt.tight_layout()
-    plt.show()
-    
-    corr_win.to_excel(os.path.join(os.path.dirname(df_path), "Correlation_Winsorized_Ratios.xlsx"))
-    print("✅ Winsorized correlation saved")
+export_df.to_excel(output_path, index=False)
 
-print("\n✅ Separate correlation analysis completed!")
+print(f"✅ Export completed!")
+print(f"Total Rows    : {len(export_df):,}")
+print(f"Total Columns : {len(available_cols)}")
+print(f"File saved as : {output_path}")
+
+print("\nExported Columns:")
+for col in available_cols:
+    print(f"   • {col}")
