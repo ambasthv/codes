@@ -1,24 +1,32 @@
+print("UPDATED 5-BIN CREATION WITH MISSING HANDLING \n")
 
-cols_to_check = ['total_assets', 'net_sales', 'gross_profit', 'net_profit']
+winsor_cols = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
 
-print("=== Column Check - Total, Missing & Min ===\n")
-
-for col in cols_to_check:
-    if col in df.columns:
-        total_rows = len(df)
-        missing_count = df[col].isna().sum()
-        non_null_count = df[col].notna().sum()
+for col in winsor_cols:
+    if col not in df.columns:
+        continue
         
-        print(f"'{col}' → Exists")
-        print(f"   Type          : {df[col].dtype}")
-        print(f"   Total Rows    : {total_rows:,}")
-        print(f"   Missing/Null  : {missing_count:,} ({missing_count/total_rows*100:.2f}%)")
-        print(f"   Non-Null      : {non_null_count:,}")
-        
-        # Min value (only on numeric columns)
-        if pd.api.types.is_numeric_dtype(df[col]):
-            print(f"   Min Value     : {df[col].min():.4f}")
-        print("-" * 50)
-    else:
-        print(f"'{col}' → MISSING")
-        print("-" * 50)
+    bin_col = f"{col}_bin5"
+    
+    df[bin_col] = pd.NA   
+    
+    # 1. Missing / NaN values (take the med value of respective ratios)
+    df.loc[df[col].isna(), bin_col] = 'Missing'
+    
+    # 2. Negative values
+    negative_mask = (df[col] < 0) & df[col].notna()
+    df.loc[negative_mask, bin_col] = 'Negative'
+    
+    # 3. Non-negative values → 4 equal bins
+    non_neg = df[(df[col] >= 0) & df[col].notna()]
+    if len(non_neg) > 0:
+        df.loc[(df[col] >= 0) & df[col].notna(), bin_col] = pd.qcut(
+            non_neg[col], 
+            q=4, 
+            labels=['Q1 (Low)', 'Q2', 'Q3', 'Q4 (High)'],
+            duplicates='drop'
+        )
+    
+    print(f" Bins created for {col}")
+    print(df[bin_col].value_counts().sort_index())
+    print("---")
