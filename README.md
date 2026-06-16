@@ -1,12 +1,3 @@
-one more thing i remember. 
-they asked me to take some mid value in chart. i didnt understand. mid value of "mean_default_rate".
-example below is the real data has come out from your code. but they said tp use some mid value of this mean default rate.
-
-check the code again and reqrite with corrected one. 
-
-lifestage_mapped	grossmargin_winsor_bin	mean_default_rate	record_count
-Corp Tech	[-583.4862 to -0.0440] (-ve)	0.064516129	93
-
 import plotly.express as px
 
 
