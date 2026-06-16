@@ -1,11 +1,41 @@
 import os
 
-# Export the entire dataframe to Excel
-output_path = os.path.join(os.path.dirname(df_path), "FULL_DATAFRAME.xlsx")
+# ====================== SPECIFY COLUMNS YOU WANT ======================
+columns_to_export = [
+    'cif',
+    'grade_date',
+    'year',
+    'lifestage_mapped',
+    'grossmargin',
+    'grossmargin_winsor',
+    'grossmargin_winsor_bin5',
+    'netmargin',
+    'netmargin_winsor',
+    'netmargin_winsor_bin5',
+    'sales_to_assets',
+    'sales_to_assets_winsor',
+    'sales_to_assets_winsor_bin5',
+    'default_ind_1yr',
+    'grossmargin_flag',
+    'netmargin_flag',
+    'sales_to_assets_flag'
+    # Add more columns here if needed
+]
 
-df.to_excel(output_path, index=False)
+# ====================== EXPORT ======================
+# Keep only columns that actually exist in df
+available_cols = [col for col in columns_to_export if col in df.columns]
 
-print(f"✅ Full dataframe exported successfully!")
-print(f"Total Rows    : {len(df):,}")
-print(f"Total Columns : {df.shape[1]}")
-print(f"File saved as : {output_path}")
+export_df = df[available_cols].copy()
+
+output_path = os.path.join(os.path.dirname(df_path), "SELECTED_COLUMNS_DATA.xlsx")
+
+export_df.to_excel(output_path, index=False)
+
+print(f"✅ Export completed!")
+print(f"Total Rows exported    : {len(export_df):,}")
+print(f"Total Columns exported : {len(available_cols)}")
+print(f"File saved as: {output_path}")
+print("\nExported Columns:")
+for col in available_cols:
+    print(f"   • {col}")
