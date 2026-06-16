@@ -1,6 +1,10 @@
-# MEAN DEFAULT RATE by valid_def_ind_1yr
+# =============================================================================
+# CORRECT MEAN DEFAULT RATE CALCULATION 
+# =============================================================================
 
-default_col = 'valid_def_ind_1yr' if 'valid_def_ind_1yr' in df.columns else 'default_ind_1yr'
+default_col = 'valid_def_ind_1yr'   # ← Correct column as per your data
+
+# Convert to numeric safely
 df[default_col] = pd.to_numeric(df[default_col], errors='coerce')
 
 print(f"Using column: {default_col} | Type: {df[default_col].dtype}\n")
@@ -9,16 +13,16 @@ bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_w
 
 for bin_col in bin_cols:
     if bin_col not in df.columns:
-        print(f"{bin_col} not found")
+        print(f"⚠️ {bin_col} not found")
         continue
       
-    # Calculate Mean Default Rate
+    # Calculate mean default rate
     mean_default = df.groupby(['lifestage_mapped', bin_col])[default_col].agg(
         mean_default_rate='mean',
-        record_count='count'          
+        record_count='count'           # helps to understand sample size
     ).reset_index()
     
-   
+    print(f"\n=== Mean Default Rate by Lifestage & {bin_col} ===")
     pivot_table = mean_default.pivot(
         index='lifestage_mapped', 
         columns=bin_col, 
@@ -27,5 +31,7 @@ for bin_col in bin_cols:
     
     print(pivot_table)
     
-    
+    # Save detailed output
     mean_default.to_csv(os.path.join(os.path.dirname(df_path), f"Mean_Default_by_{bin_col}.csv"), index=False)
+
+print("\n✅ Mean Default Rate calculation completed using valid_def_ind_1yr!")
