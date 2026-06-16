@@ -1,44 +1,25 @@
-print("=== UPDATED 5-BIN CREATION WITH RANGE LABELS ===\n")
+IN BELOW CODE, I AM GETTING THIS ERROR "agg function failed [how->mean,dtype->object]
 
-winsor_cols = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
+# CALCULATIONS - Mean Default Rate by Lifestage & Bins
 
-for col in winsor_cols:
-    if col not in df.columns:
-        continue
+
+print("=== Calculating Mean Default Rate by Lifestage and Bins ===\n")
+
+
+print("valid_def_ind_1yr exists?", 'valid_def_ind_1yr' in df.columns)
+print("rbs exists?", 'rbs' in df.columns)
+
+# List of bin columns
+bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
+
+for bin_col in bin_cols:
+    if bin_col in df.columns:
+      
+        mean_default = df.groupby(['lifestage_mapped', bin_col])['valid_def_ind_1yr'].mean().reset_index()
+        mean_default = mean_default.rename(columns={'default_ind_1yr': 'mean_default_rate'})
         
-    bin_col = f"{col}_bin5"
-    df[bin_col] = pd.NA
-    
-    # 1. Missing values
-    df.loc[df[col].isna(), bin_col] = 'Missing'
-    
-    # 2. Negative values - Show actual range
-    negative_mask = (df[col] < 0) & df[col].notna()
-    if negative_mask.sum() > 0:
-        neg_min = df.loc[negative_mask, col].min()
-        neg_max = df.loc[negative_mask, col].max()
-        df.loc[negative_mask, bin_col] = f"[{neg_min:.4f} to {neg_max:.4f}] (-ve)"
-    
-    # 3. Non-negative values → 4 equal count bins with actual ranges
-    non_neg = df[(df[col] >= 0) & df[col].notna()]
-    if len(non_neg) > 0:
-        # Create 4 bins and get the actual range for each
-        bin_labels = pd.qcut(non_neg[col], q=4, duplicates='drop', retbins=True)[1]
+        print(f"\nMean Default Rate by Lifestage & {bin_col}:")
+        print(mean_default.pivot(index='lifestage_mapped', columns=bin_col, values='mean_default_rate').round(4))
         
-        # Create custom range labels
-        ranges = []
-        for i in range(len(bin_labels)-1):
-            low = bin_labels[i]
-            high = bin_labels[i+1]
-            ranges.append(f"{low:.4f} - {high:.4f}")
-        
-        df.loc[(df[col] >= 0) & df[col].notna(), bin_col] = pd.qcut(
-            non_neg[col], 
-            q=4, 
-            labels=ranges,
-            duplicates='drop'
-        )
-    
-    print(f"✅ Bins with ranges created for {col}")
-    print(df[bin_col].value_counts().sort_index())
-    print("---")
+       
+        mean_default.to_csv(os.path.join(os.path.dirname(df_path), f"Mean_Default_by_{bin_col}.csv"), index=False)
