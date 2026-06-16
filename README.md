@@ -12,19 +12,17 @@ for col in winsor_cols:
     # 1. Missing values
     df.loc[df[col].isna(), bin_col] = 'Missing'
     
-    # 2. Negative values
+    # 2. Negative values with range
     negative_mask = (df[col] < 0) & df[col].notna()
     if negative_mask.sum() > 0:
         neg_min = df.loc[negative_mask, col].min()
         neg_max = df.loc[negative_mask, col].max()
         df.loc[negative_mask, bin_col] = f"[{neg_min:.4f} to {neg_max:.4f}] (-ve)"
     
-    # 3. +ve ranges 4 equal count 
+    # 3. Non-negative values → 4 equal count bins with actual ranges
     non_neg = df[(df[col] >= 0) & df[col].notna()]
     if len(non_neg) > 0:
-        
-        bin_labels = pd.qcut(non_neg[col], q=4, duplicates='drop', retbins=True)[1] # check if it actually does equal distribution 
-        
+        bin_labels = pd.qcut(non_neg[col], q=4, duplicates='drop', retbins=True)[1]
         
         ranges = []
         for i in range(len(bin_labels)-1):
@@ -39,6 +37,6 @@ for col in winsor_cols:
             duplicates='drop'
         )
     
-    print(f" {col}")
+    print(f"✅ Bins created for {col}")
     print(df[bin_col].value_counts().sort_index())
-    
+    print("---")
