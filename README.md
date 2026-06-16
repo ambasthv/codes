@@ -1,6 +1,6 @@
 import plotly.express as px
 
-print("=== FINAL CLEAN LINE CHARTS (Logical Order Like Excel) ===\n")
+print("=== FINAL ROBUST LINE CHARTS (No Zigzag) ===\n")
 
 bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
 
@@ -8,26 +8,29 @@ for bin_col in bin_cols:
     if bin_col not in df.columns:
         continue
     
-    # Calculate mean default rate
+    # Calculate mean
     mean_default = df.groupby(['lifestage_mapped', bin_col])[default_col].mean().reset_index()
     mean_default = mean_default.rename(columns={default_col: 'mean_default_rate'})
     
     clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
     
-    # Strong sorting to match Excel behavior
-    def sort_key(x):
-        if x == 'Negative':
+    # === Create a numeric sort key for proper ordering ===
+    def get_sort_value(label):
+        if label == 'Negative':
             return -999999
-        if x == 'Missing':
+        if label == 'Missing':
             return 999999
-        if isinstance(x, str) and '-' in x:
+        if isinstance(label, str) and '-' in str(label):
             try:
-                return float(x.split('-')[0].strip())
+                # Extract first number
+                return float(str(label).split('-')[0].strip())
             except:
                 return 0
         return 0
     
-    ordered_bins = sorted(mean_default[bin_col].dropna().unique(), key=sort_key)
+    # Add temporary sort column
+    mean_default['sort_key'] = mean_default[bin_col].apply(get_sort_value)
+    mean_default = mean_default.sort_values('sort_key')
     
     # Line Chart
     fig = px.line(
@@ -36,7 +39,6 @@ for bin_col in bin_cols:
         y='mean_default_rate',
         color='lifestage_mapped',
         markers=True,
-        category_orders={bin_col: ordered_bins},   # Critical fix
         title=f"Mean Default Rate by {clean_name} and Lifestage",
         labels={
             'mean_default_rate': 'Mean Default Rate (1 Year)',
@@ -51,7 +53,7 @@ for bin_col in bin_cols:
         template="plotly_white"
     )
     
-    fig.update_xaxes(title=f"{clean_name} Bins (Low to High)")
+    fig.update_xaxes(title=f"{clean_name} Bins (Low → High)")
     fig.update_yaxes(title="Mean Default Rate")
     
     fig.show()
