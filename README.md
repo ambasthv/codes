@@ -1,62 +1,37 @@
-import plotly.express as px
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-print("=== FINAL ROBUST LINE CHARTS (No Zigzag) ===\n")
+print("=== Correlation Sanity Check Between Ratios ===\n")
 
-bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
+# Select the ratios you want to check
+ratio_columns = ['grossmargin', 'netmargin', 'sales_to_assets',
+                 'grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
 
-for bin_col in bin_cols:
-    if bin_col not in df.columns:
-        continue
-    
-    # Calculate mean
-    mean_default = df.groupby(['lifestage_mapped', bin_col])[default_col].mean().reset_index()
-    mean_default = mean_default.rename(columns={default_col: 'mean_default_rate'})
-    
-    clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
-    
-    # === Create a numeric sort key for proper ordering ===
-    def get_sort_value(label):
-        if label == 'Negative':
-            return -999999
-        if label == 'Missing':
-            return 999999
-        if isinstance(label, str) and '-' in str(label):
-            try:
-                # Extract first number
-                return float(str(label).split('-')[0].strip())
-            except:
-                return 0
-        return 0
-    
-    # Add temporary sort column
-    mean_default['sort_key'] = mean_default[bin_col].apply(get_sort_value)
-    mean_default = mean_default.sort_values('sort_key')
-    
-    # Line Chart
-    fig = px.line(
-        mean_default,
-        x=bin_col,
-        y='mean_default_rate',
-        color='lifestage_mapped',
-        markers=True,
-        title=f"Mean Default Rate by {clean_name} and Lifestage",
-        labels={
-            'mean_default_rate': 'Mean Default Rate (1 Year)',
-            bin_col: f'{clean_name} Range'
-        }
-    )
-    
-    fig.update_layout(
-        xaxis_tickangle=-45,
-        height=650,
-        legend_title="Lifestage",
-        template="plotly_white"
-    )
-    
-    fig.update_xaxes(title=f"{clean_name} Bins (Low → High)")
-    fig.update_yaxes(title="Mean Default Rate")
-    
-    fig.show()
-    fig.write_html(os.path.join(os.path.dirname(df_path), f"Mean_Default_Line_{bin_col}.html"))
-    
-    print(f"✅ Clean chart saved for {bin_col}")
+# Keep only columns that exist
+available_ratios = [col for col in ratio_columns if col in df.columns]
+
+# Correlation Matrix
+corr_matrix = df[available_ratios].corr().round(4)
+
+print("Correlation Matrix:")
+print(corr_matrix)
+
+# Save to Excel
+corr_matrix.to_excel(os.path.join(os.path.dirname(df_path), "Ratios_Correlation_Matrix.xlsx"))
+
+# Heatmap Visualization
+plt.figure(figsize=(10, 8))
+sns.heatmap(corr_matrix, 
+            annot=True, 
+            cmap='coolwarm', 
+            vmin=-1, 
+            vmax=1,
+            center=0,
+            fmt='.3f',
+            linewidths=0.5)
+plt.title('Correlation Between Financial Ratios (Sanity Check)')
+plt.tight_layout()
+plt.show()
+
+print("\n✅ Correlation analysis completed and saved!")
