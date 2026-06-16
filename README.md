@@ -1,6 +1,6 @@
 import plotly.express as px
 
-print("=== FIXED Line Charts with Logical Order (Negative Left) ===\n")
+print("=== FIXED Line Charts - Proper Order (No Looping) ===\n")
 
 bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
 
@@ -14,21 +14,21 @@ for bin_col in bin_cols:
     
     clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
     
-    # === FORCE LOGICAL ORDER: Negative first, then increasing ranges ===
-    unique_bins = mean_default[bin_col].unique()
-    
-    # Sort bins logically: Negative first, then by starting number
-    def sort_key(x):
+    # === CRITICAL FIX: Proper numerical sorting of bins ===
+    def get_bin_order(x):
         if x == 'Negative':
             return -999999
+        if x == 'Missing':
+            return 999999
         if isinstance(x, str) and '-' in x:
             try:
+                # Extract first number from range like "0.0264 - 55.1603"
                 return float(x.split('-')[0].strip())
             except:
                 return 0
         return 0
     
-    ordered_bins = sorted(unique_bins, key=sort_key)
+    ordered_bins = sorted(mean_default[bin_col].unique(), key=get_bin_order)
     
     # Line Chart with correct order
     fig = px.line(
@@ -37,7 +37,7 @@ for bin_col in bin_cols:
         y='mean_default_rate',
         color='lifestage_mapped',
         markers=True,
-        category_orders={bin_col: ordered_bins},   # ← This fixes the order
+        category_orders={bin_col: ordered_bins},   # ← This fixes the zig-zag
         title=f"Mean Default Rate by {clean_name} and Lifestage",
         labels={
             'mean_default_rate': 'Mean Default Rate (1 Year)',
@@ -56,6 +56,6 @@ for bin_col in bin_cols:
     fig.update_yaxes(title="Mean Default Rate")
     
     fig.show()
-    
     fig.write_html(os.path.join(os.path.dirname(df_path), f"Mean_Default_Line_{bin_col}.html"))
-    print(f"✅ Saved ordered line chart for {bin_col}")
+    
+    print(f"✅ Fixed line chart saved for {bin_col}")
