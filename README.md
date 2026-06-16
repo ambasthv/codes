@@ -1,38 +1,40 @@
-# =============================================================================
-# CALCULATIONS - Mean Default Rate by Lifestage & Bins (Fixed)
-# =============================================================================
 
-print("=== Calculating Mean Default Rate by Lifestage and Bins ===\n")
+THE BELOW CODE ACTUALLY CREATES THE BAR HISTORGAM, DONT DO ALL. JUST CREATE A LINE GRAPH. SAMPLE I HAVE ATTACHED . DONT JUST REPLICATED AS SAMPLE, MAKE IT GOOD.INTEREACTIVE
+import plotly.express as px
 
-# Fix data type first
-default_col = 'valid_def_ind_1yr' if 'valid_def_ind_1yr' in df.columns else 'default_ind_1yr'
 
-# Convert to numeric safely
-df[default_col] = pd.to_numeric(df[default_col], errors='coerce')
-
-print(f"Using column: {default_col} | Type after conversion: {df[default_col].dtype}")
-
-# List of bin columns (update names if needed)
-bin_cols = ['grossmargin_winsor_bin5', 'netmargin_winsor_bin5', 'sales_to_assets_winsor_bin5']
+bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
 
 for bin_col in bin_cols:
     if bin_col not in df.columns:
-        print(f"⚠️ {bin_col} not found")
         continue
-      
-    # Calculate mean default rate
-    mean_default = df.groupby(['lifestage_mapped', bin_col])[default_col].mean().reset_index()
-    mean_default = mean_default.rename(columns={default_col: 'mean_default_rate'})
     
-    print(f"\nMean Default Rate by Lifestage & {bin_col}:")
-    pivot_table = mean_default.pivot(
-        index='lifestage_mapped', 
-        columns=bin_col, 
-        values='mean_default_rate'
-    ).round(4)
-    print(pivot_table)
-    
-    # Save to CSV
-    mean_default.to_csv(os.path.join(os.path.dirname(df_path), f"Mean_Default_by_{bin_col}.csv"), index=False)
+    # Bar Chart - Mean Default Rate
+    mean_df = df.groupby(['lifestage_mapped', bin_col])['default_ind_1yr'].mean().reset_index()
+    fig1 = px.bar(
+        mean_df,
+        x=bin_col,
+        y='default_ind_1yr',
+        color='lifestage_mapped',
+        title=f"Mean Default Rate by Lifestage & {bin_col.replace('_winsor_bin5','')}",
+        labels={'default_ind_1yr': 'Mean Default Rate (1yr)'},
+        barmode='group'
+    )
+    fig1.update_layout(xaxis_tickangle=-45)
+    fig1.show()
+    fig1.write_html(os.path.join(os.path.dirname(df_path), f"Mean_Default_Bar_{bin_col}.html"))
 
-print("\n✅ Mean Default Rate calculation completed!")
+
+
+    # Histogram - Count Distribution
+    fig3 = px.histogram(
+        df,
+        x=bin_col,
+        color='lifestage_mapped',
+        title=f"Distribution of Observations by {bin_col.replace('_winsor_bin5','')} & Lifestage",
+        barmode='group'
+    )
+    fig3.show()
+    fig3.write_html(os.path.join(os.path.dirname(df_path), f"Count_Hist_{bin_col}.html"))
+
+
