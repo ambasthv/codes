@@ -1,15 +1,27 @@
-import pandas as pd
-import os
+this code, DONT CHANGE anything, its for your reference.
+post this create anothe code to drop the rows that has missing/null values. in each columns mentioned there.
 
-# Export all column names to Excel
-columns_df = pd.DataFrame({
-    'Column_Name': df.columns.tolist()
-})
 
-output_path = os.path.join(os.path.dirname(df_path), "All_Columns_List.xlsx")
+cols_to_check = ['total_assets', 'net_sales', 'gross_profit', 'net_profit']
 
-columns_df.to_excel(output_path, index=False)
+print("=== Column Check - Total, Missing & Min ===\n")
 
-print(f"✅ All columns exported successfully!")
-print(f"Total Columns: {len(df.columns)}")
-print(f"File saved: {output_path}")
+for col in cols_to_check:
+    if col in df.columns:
+        total_rows = len(df)
+        missing_count = df[col].isna().sum()
+        non_null_count = df[col].notna().sum()
+        
+        print(f"'{col}' → Exists")
+        print(f"   Type          : {df[col].dtype}")
+        print(f"   Total Rows    : {total_rows:,}")
+        print(f"   Missing/Null  : {missing_count:,} ({missing_count/total_rows*100:.2f}%)")
+        print(f"   Non-Null      : {non_null_count:,}")
+        
+        # Min value 
+        if pd.api.types.is_numeric_dtype(df[col]):
+            print(f"   Min Value     : {df[col].min():.4f}")
+        print("-" * 50)
+    else:
+        print(f"'{col}' → MISSING")
+        print("-" * 50)
