@@ -1,34 +1,20 @@
-# =============================================================================
-# IMPUTE MISSING WITH MEDIAN + APPEND FLAG (Preserve Original Flags)
-# =============================================================================
+# Extract 20 records from dataframe
 
-print("=== Median Imputation with Flag Append ===\n")
+# Option 1: Random 20 records (recommended)
+sample_df = df.sample(n=20, random_state=42)   # random_state for reproducibility
 
-ratios = ['grossmargin', 'netmargin', 'sales_to_assets']
+# Option 2: First 20 records (if you prefer sequential)
+# sample_df = df.head(20)
 
-for ratio in ratios:
-    if ratio not in df.columns:
-        continue
-    
-    flag_col = f"{ratio}_flag"
-    median_value = df[ratio].median()
-    missing_count = df[ratio].isna().sum()
-    
-    # Replace NaN with median
-    df[ratio] = df[ratio].fillna(median_value)
-    
-    # Update Flag - APPEND logic
-    if flag_col in df.columns:
-        # Case 1: If flag is already something → append ", Median Imputed"
-        mask = df[ratio].notna() & df[flag_col].notna()  # rows that were imputed
-        df.loc[mask, flag_col] = df.loc[mask, flag_col] + ", Median Imputed"
-        
-        # Case 2: If flag was blank/NaN → put only "Median Imputed"
-        df.loc[df[flag_col].isna(), flag_col] = "Median Imputed"
-    
-    print(f"✅ {ratio}:")
-    print(f"   Median used          : {median_value:.4f}")
-    print(f"   Missing replaced     : {missing_count:,}")
-    print(f"   Flags updated (appended)")
+# Option 3: Last 20 records
+# sample_df = df.tail(20)
 
-print("\n✅ Median Imputation with preserved original flags completed!")
+print(f"✅ Extracted {len(sample_df)} records")
+print("\nFirst 5 rows of sample:")
+print(sample_df.head())
+
+# Save to Excel in same folder
+output_path = os.path.join(os.path.dirname(df_path), "Sample_20_Records.xlsx")
+sample_df.to_excel(output_path, index=False)
+
+print(f"\n✅ File saved: {output_path}")
