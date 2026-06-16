@@ -1,19 +1,11 @@
-✅ Here is the code:
-# Filter on financial_statement_found == 1 and update df
+import os
 
-print("Before filtering:", len(df), "rows")
+# Export only cif and financial_statement_found (all rows)
+df[['cif', 'financial_statement_found']].to_excel(
+    os.path.join(os.path.dirname(df_path), "CIF_and_Financial_Statement.xlsx"), 
+    index=False
+)
 
-df = df[df['financial_statement_found'] == 1].copy()
-
-print("After filtering (only financial_statement_found = 1):", len(df), "rows")
-print(f"Remaining rows: {len(df):,}")
-
-Quick Check (Run after above):
-# Verify the filter
-print("financial_statement_found value counts:")
-print(df['financial_statement_found'].value_counts())
-
-print("\nNew df shape:", df.shape)
-
-Just run the first block. It will keep only rows where financial_statement_found = 1 and update your main df.
-Would you like to also keep the old dataframe as backup (e.g. df_old) before filtering?
+print("✅ File exported successfully!")
+print("Columns: cif + financial_statement_found")
+print("All rows included.")
