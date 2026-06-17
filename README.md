@@ -1,36 +1,26 @@
-# =============================================================================
-# MEAN DEFAULT RATE BY LIFESTAGE & BINS (Fixed)
-# =============================================================================
-
-default_col = 'valid_def_ind_1yr'
-
-# Force convert to numeric
-df[default_col] = pd.to_numeric(df[default_col], errors='coerce')
-
-print(f"Using column: {default_col} | Type: {df[default_col].dtype}\n")
-
-bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
-
-for bin_col in bin_cols:
-    if bin_col not in df.columns:
-        print(f"⚠️ {bin_col} not found")
-        continue
-      
-    # Calculate mean default rate
-    mean_default = df.groupby(['lifestage_mapped', bin_col])[default_col].agg(
-        mean_default_rate='mean',
-        record_count='count'
-    ).reset_index()
-    
-    print(f"\n=== Mean Default Rate by Lifestage & {bin_col} ===")
-    pivot_table = mean_default.pivot(
-        index='lifestage_mapped', 
-        columns=bin_col, 
-        values='mean_default_rate'
-    ).round(4)
-    print(pivot_table)
-    
-    # Save
-    mean_default.to_csv(os.path.join(os.path.dirname(df_path), f"Mean_Default_by_{bin_col}.csv"), index=False)
-
-print("\n✅ Mean Default Rate calculation completed!")
+1205_niche_desc	grossmargin_winsor_bin	mean_default_rate
+ENERGY AND RESOURCE INNOVATION	0.0264 - 42.8954	0.104477612
+ENERGY AND RESOURCE INNOVATION	42.8954 - 57.6477	0.117647059
+ENERGY AND RESOURCE INNOVATION	57.6477 - 78.4825	0.166666667
+ENERGY AND RESOURCE INNOVATION	78.4825 - 100.0000	0.291666667
+ENERGY AND RESOURCE INNOVATION	[-507.4586 to -0.0440] (-ve)	0.323076923
+ERI	0.0264 - 42.8954	0.060546875
+ERI	42.8954 - 57.6477	0.115264798
+ERI	57.6477 - 78.4825	0.065359477
+ERI	78.4825 - 100.0000	0.023166023
+ERI	[-507.4586 to -0.0440] (-ve)	0.208191126
+HARDWARE	0.0264 - 42.8954	0.071039739
+HARDWARE	42.8954 - 57.6477	0.092827004
+HARDWARE	57.6477 - 78.4825	0.0296875
+HARDWARE	78.4825 - 100.0000	0.10234375
+HARDWARE	[-507.4586 to -0.0440] (-ve)	0.139250191
+HEALTHCARE	0.0264 - 42.8954	0.229885057
+HEALTHCARE	42.8954 - 57.6477	0.090909091
+HEALTHCARE	57.6477 - 78.4825	0.178571429
+HEALTHCARE	78.4825 - 100.0000	0.0625
+HEALTHCARE	[-507.4586 to -0.0440] (-ve)	0.034482759
+LIFE SCIENCE	0.0264 - 42.8954	0.071584699
+LIFE SCIENCE	42.8954 - 57.6477	0.049059481
+LIFE SCIENCE	57.6477 - 78.4825	0.022982362
+LIFE SCIENCE	78.4825 - 100.0000	0.040928768
+LIFE SCIENCE	[-507.4586 to -0.0440] (-ve)	0.107784431
