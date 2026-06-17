@@ -1,26 +1,61 @@
-1205_niche_desc	grossmargin_winsor_bin	mean_default_rate
-ENERGY AND RESOURCE INNOVATION	0.0264 - 42.8954	0.104477612
-ENERGY AND RESOURCE INNOVATION	42.8954 - 57.6477	0.117647059
-ENERGY AND RESOURCE INNOVATION	57.6477 - 78.4825	0.166666667
-ENERGY AND RESOURCE INNOVATION	78.4825 - 100.0000	0.291666667
-ENERGY AND RESOURCE INNOVATION	[-507.4586 to -0.0440] (-ve)	0.323076923
-ERI	0.0264 - 42.8954	0.060546875
-ERI	42.8954 - 57.6477	0.115264798
-ERI	57.6477 - 78.4825	0.065359477
-ERI	78.4825 - 100.0000	0.023166023
-ERI	[-507.4586 to -0.0440] (-ve)	0.208191126
-HARDWARE	0.0264 - 42.8954	0.071039739
-HARDWARE	42.8954 - 57.6477	0.092827004
-HARDWARE	57.6477 - 78.4825	0.0296875
-HARDWARE	78.4825 - 100.0000	0.10234375
-HARDWARE	[-507.4586 to -0.0440] (-ve)	0.139250191
-HEALTHCARE	0.0264 - 42.8954	0.229885057
-HEALTHCARE	42.8954 - 57.6477	0.090909091
-HEALTHCARE	57.6477 - 78.4825	0.178571429
-HEALTHCARE	78.4825 - 100.0000	0.0625
-HEALTHCARE	[-507.4586 to -0.0440] (-ve)	0.034482759
-LIFE SCIENCE	0.0264 - 42.8954	0.071584699
-LIFE SCIENCE	42.8954 - 57.6477	0.049059481
-LIFE SCIENCE	57.6477 - 78.4825	0.022982362
-LIFE SCIENCE	78.4825 - 100.0000	0.040928768
-LIFE SCIENCE	[-507.4586 to -0.0440] (-ve)	0.107784431
+import plotly.express as px
+
+print("=== Line Chart with Mid-Point of Bin on X-Axis ===\n")
+
+bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
+
+for bin_col in bin_cols:
+    if bin_col not in df.columns:
+        continue
+    
+    # Calculate mean default rate
+    mean_default = df.groupby(['lifestage_mapped', bin_col])['valid_def_ind_1yr'].mean().reset_index()
+    mean_default = mean_default.rename(columns={'valid_def_ind_1yr': 'mean_default_rate'})
+    
+    clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
+    
+    # === Calculate Mid-Point of each bin ===
+    def get_midpoint(label):
+        if label == 'Negative':
+            return -1000   # Place negative on left
+        if label == 'Missing':
+            return 999999
+        if isinstance(label, str) and '-' in label:
+            try:
+                parts = label.split('-')
+                low = float(parts[0].strip())
+                high = float(parts[1].strip())
+                return (low + high) / 2
+            except:
+                return 0
+        return 0
+    
+    mean_default['bin_midpoint'] = mean_default[bin_col].apply(get_midpoint)
+    
+    # Line Chart using Mid-Point on X-axis
+    fig = px.line(
+        mean_default,
+        x='bin_midpoint',
+        y='mean_default_rate',
+        color='lifestage_mapped',
+        markers=True,
+        title=f"Mean Default Rate by {clean_name} and Lifestage",
+        labels={
+            'mean_default_rate': 'Mean Default Rate (1 Year)',
+            'bin_midpoint': f'{clean_name} Mid Point'
+        }
+    )
+    
+    fig.update_layout(
+        height=650,
+        legend_title="Lifestage",
+        template="plotly_white"
+    )
+    
+    fig.update_xaxes(title=f"{clean_name} Mid Point")
+    fig.update_yaxes(title="Mean Default Rate")
+    
+    fig.show()
+    fig.write_html(os.path.join(os.path.dirname(df_path), f"Mean_Default_Midpoint_{bin_col}.html"))
+    
+    print(f"✅ Mid-point line chart saved for {bin_col}")
