@@ -1,7 +1,9 @@
+import plotly.express as px
 
-the below code to create line charts is good, no change in look wise, just add exclude_lifestages = []   , so i can select/delete lifestage mapped iteams if i want to.
-Most important, save the chart in png. NOT IN HTML.
-keep the code simple and easy to explain. DONT CHANGE ANY LOOK AND FEEL.
+print("=== Simple Line Charts with Filter Option ===\n")
+
+# Easy to edit - Add or remove lifestages to exclude
+exclude_lifestages = []   # Example: ['Mid Stage', 'Other']
 
 bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
 
@@ -13,9 +15,11 @@ for bin_col in bin_cols:
     mean_default = df.groupby(['lifestage_mapped', bin_col])[default_col].mean().reset_index()
     mean_default = mean_default.rename(columns={default_col: 'mean_default_rate'})
     
+    # Filter lifestages
+    mean_default = mean_default[~mean_default['lifestage_mapped'].isin(exclude_lifestages)]
+    
     clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
     
- 
     def get_sort_value(label):
         if label == 'Negative':
             return -999999
@@ -23,17 +27,15 @@ for bin_col in bin_cols:
             return 999999
         if isinstance(label, str) and '-' in str(label):
             try:
-                
                 return float(str(label).split('-')[0].strip())
             except:
                 return 0
         return 0
     
-   
     mean_default['sort_key'] = mean_default[bin_col].apply(get_sort_value)
     mean_default = mean_default.sort_values('sort_key')
     
-    # Line Chart
+    # Line Chart (same look as before)
     fig = px.line(
         mean_default,
         x=bin_col,
@@ -58,6 +60,10 @@ for bin_col in bin_cols:
     fig.update_yaxes(title="Mean Default Rate")
     
     fig.show()
-    fig.write_html(os.path.join(os.path.dirname(df_path), f"Mean_Default_Line_{bin_col}.html"))
     
- 
+    # Save as PNG (not HTML)
+    filename = f"Mean_Default_Line_{bin_col}.png"
+    fig.write_image(os.path.join(os.path.dirname(df_path), filename))
+    print(f"✅ Saved PNG: {filename}")
+
+print("\n✅ All line charts saved as PNG files!")
