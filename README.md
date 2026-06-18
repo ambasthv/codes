@@ -1,51 +1,46 @@
----------------------------------------------------------------------------
-ValueError                                Traceback (most recent call last)
-Cell In[47], line 60
-     56 fig.show()
-     59 filename = f"Mean_Default_Line_{bin_col}.png"
----> 60 fig.write_image(os.path.join(os.path.dirname(df_path), filename))
+import matplotlib.pyplot as plt
 
-File ~\AppData\Roaming\Python\Python312\site-packages\plotly\basedatatypes.py:3895, in BaseFigure.write_image(self, *args, **kwargs)
-   3891     if kwargs.get("engine", None):
-   3892         warnings.warn(
-   3893             ENGINE_PARAM_DEPRECATION_MSG, DeprecationWarning, stacklevel=2
-   3894         )
--> 3895 return pio.write_image(self, *args, **kwargs)
+print("=== Simple Line Charts (Same Colors) ===\n")
 
-File ~\AppData\Roaming\Python\Python312\site-packages\plotly\io\_kaleido.py:528, in write_image(fig, file, format, scale, width, height, validate, engine)
-    524 format = infer_format(path, format)
-    526 # Request image
-    527 # Do this first so we don't create a file if image conversion fails
---> 528 img_data = to_image(
-    529     fig,
-    530     format=format,
-    531     scale=scale,
-    532     width=width,
-    533     height=height,
-    534     validate=validate,
-    535     engine=engine,
-    536 )
-    538 # Open file
-    539 if path is None:
-    540     # We previously failed to make sense of `file` as a pathlib object.
-    541     # Attempt to write to `file` as an open file descriptor.
+exclude_lifestages = []   # Add items here to exclude, e.g. ['Mid Stage', 'Other']
 
-File ~\AppData\Roaming\Python\Python312\site-packages\plotly\io\_kaleido.py:345, in to_image(fig, format, width, height, scale, validate, engine)
-    343     # Raise informative error message if Kaleido is not installed
-    344     if not kaleido_available():
---> 345         raise ValueError(
-    346             """
-    347 Image export using the "kaleido" engine requires the Kaleido package,
-    348 which can be installed using pip:
-    349 
-    350     $ pip install --upgrade kaleido
-    351 """
-    352         )
-    354     # Convert figure to dict (and validate if requested)
-    355     fig_dict = validate_coerce_fig_to_dict(fig, validate)
+bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
 
-ValueError: 
-Image export using the "kaleido" engine requires the Kaleido package,
-which can be installed using pip:
+colors = plt.cm.tab10.colors   # Same colors as histogram & box plot
 
-    $ pip install --upgrade kaleido
+for bin_col in bin_cols:
+    if bin_col not in df.columns:
+        continue
+    
+    # Calculate mean default rate
+    data = df.groupby(['lifestage_mapped', bin_col])['valid_def_ind_1yr'].mean().reset_index()
+    data = data.rename(columns={'valid_def_ind_1yr': 'mean_default_rate'})
+    
+    data = data[~data['lifestage_mapped'].isin(exclude_lifestages)]
+    
+    clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
+    
+    plt.figure(figsize=(12, 7))
+    
+    for i, lifestage in enumerate(data['lifestage_mapped'].unique()):
+        subset = data[data['lifestage_mapped'] == lifestage]
+        plt.plot(subset[bin_col], subset['mean_default_rate'], 
+                 marker='o', color=colors[i % len(colors)], label=lifestage)
+    
+    plt.title(f"Mean Default Rate by {clean_name} and Lifestage")
+    plt.xlabel(f"{clean_name} Bins")
+    plt.ylabel("Mean Default Rate")
+    plt.xticks(rotation=45)
+    plt.legend(title="Lifestage", bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+    
+    # Save as PNG
+    filename = f"LineChart_{bin_col}.png"
+    plt.savefig(os.path.join(os.path.dirname(df_path), filename), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"✅ Saved: {filename}")
+
+print("\n✅ All line charts saved as PNG files!")
