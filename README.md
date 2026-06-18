@@ -1,42 +1,48 @@
 import matplotlib.pyplot as plt
-import seaborn as sns
 
-print("=== Simple Histograms of Winsorized Ratios by Lifestage ===\n")
+print("=== Histograms - One Page per Ratio (2x2 Grid) ===\n")
 
-# List of winsorized columns
+# 1. Exclude lifestages if needed
+exclude_lifestages = []   # Example: ['Mid Stage', 'Other']
+
 winsor_cols = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
 
-# Create a 2x2 grid of histograms
-fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-axes = axes.ravel()   # Flatten for easy looping
-
-for i, col in enumerate(winsor_cols):
+for col in winsor_cols:
     if col not in df.columns:
         continue
     
-    # Histogram by Lifestage
-    sns.histplot(
-        data=df,
-        x=col,
-        hue='lifestage_mapped',
-        kde=True,                    # Smooth curve
-        bins=30,
-        alpha=0.7,
-        ax=axes[i]
-    )
+    # Get lifestages
+    lifestages = [ls for ls in df['lifestage_mapped'].unique() 
+                  if ls not in exclude_lifestages]
     
-    axes[i].set_title(f"Histogram of {col.replace('_winsor','')}")
-    axes[i].set_xlabel(col.replace('_winsor',''))
-    axes[i].set_ylabel("Count")
+    print(f"\nCreating 2x2 histogram grid for {col}")
+    
+    # Create one figure per ratio
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    axes = axes.ravel()
+    
+    for i, ls in enumerate(lifestages[:4]):   # Max 4 lifestages in 2x2
+        subset = df[df['lifestage_mapped'] == ls]
+        
+        axes[i].hist(subset[col], bins=30, color='skyblue', edgecolor='black', alpha=0.8)
+        axes[i].set_title(f"{ls}")
+        axes[i].set_xlabel(col.replace('_winsor', ''))
+        axes[i].set_ylabel("Count")
+        axes[i].grid(True, alpha=0.3)
+    
+    # Hide extra subplots if less than 4 lifestages
+    for j in range(len(lifestages), 4):
+        axes[j].set_visible(False)
+    
+    plt.suptitle(f"Histograms of {col.replace('_winsor','')} by Lifestage", fontsize=16)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+    
+    # Save the full grid
+    filename = f"Histogram_Grid_{col}.png"
+    plt.savefig(os.path.join(os.path.dirname(df_path), filename), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"   Saved: {filename}")
 
-# Hide the empty 4th subplot if only 3 charts
-if len(winsor_cols) < 4:
-    axes[3].set_visible(False)
-
-plt.suptitle("Histograms of Winsorized Ratios by Lifestage", fontsize=16)
-plt.tight_layout()
-plt.show()
-
-# Save the figure
-plt.savefig(os.path.join(os.path.dirname(df_path), "Histograms_by_Lifestage.png"), dpi=300, bbox_inches='tight')
-print("✅ Histograms saved as PNG file")
+print("\n✅ All histogram grids created and saved!")
