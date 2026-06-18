@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 
-print("=== Simple Matplotlib Line Charts with Filter ===\n")
+print("=== Simple Line Chart with Data Labels on Points ===\n")
 
-# === ADD YOUR FILTER HERE (one liner) ===
-exclude_lifestages = ['Mid Stage', 'Other']   # ← Change this list as needed
+exclude_lifestages = ['Mid Stage', 'Other']   # Change as needed
 
 bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
 
@@ -11,20 +10,25 @@ for bin_col in bin_cols:
     if bin_col not in df.columns:
         continue
     
-    # Calculate mean
     mean_default = df.groupby(['lifestage_mapped', bin_col])['valid_def_ind_1yr'].mean().reset_index()
     mean_default = mean_default.rename(columns={'valid_def_ind_1yr': 'mean_default_rate'})
     
-    # Filter out unwanted lifestages (one liner)
+    # Filter if needed
     mean_default = mean_default[~mean_default['lifestage_mapped'].isin(exclude_lifestages)]
     
     clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
     
-    plt.figure(figsize=(12, 7))
+    plt.figure(figsize=(14, 8))
     
     for lifestage in mean_default['lifestage_mapped'].unique():
-        data = mean_default[mean_default['lifestage_mapped'] == lifestage]
+        data = mean_default[mean_default['lifestage_mapped'] == lifestage].copy()
         plt.plot(data[bin_col], data['mean_default_rate'], marker='o', label=lifestage)
+        
+        # Add data labels on each point
+        for i, row in data.iterrows():
+            plt.text(row[bin_col], row['mean_default_rate'] + 0.005, 
+                     f"{row['mean_default_rate']:.4f}", 
+                     ha='center', va='bottom', fontsize=9)
     
     plt.title(f"Mean Default Rate by {clean_name} and Lifestage")
     plt.xlabel(f"{clean_name} Bins")
@@ -36,4 +40,4 @@ for bin_col in bin_cols:
     plt.show()
     
     plt.savefig(os.path.join(os.path.dirname(df_path), f"Mean_Default_Line_{bin_col}.png"), dpi=300, bbox_inches='tight')
-    print(f"✅ Chart saved for {bin_col} (excluded: {exclude_lifestages})")
+    print(f"✅ Chart with data labels saved for {bin_col}")
