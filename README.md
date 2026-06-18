@@ -1,11 +1,15 @@
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-print("=== Histograms - All Lifestages with Filter Option ===\n")
+print("=== Box Plots - Same Colors as Histogram ===\n")
 
-# 1. Easy to edit - Add or remove lifestages to exclude
-exclude_lifestages = ['Other', 'None']   
+# Easy to edit
+exclude_lifestages = []   
 
 winsor_cols = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
+
+# Same color palette as histogram
+colors = plt.cm.tab10.colors
 
 for col in winsor_cols:
     if col not in df.columns:
@@ -15,35 +19,33 @@ for col in winsor_cols:
                   if ls not in exclude_lifestages]
     
     n = len(lifestages)
-    cols = 4
-    rows = (n + cols - 1) // cols
+    cols_grid = 4
+    rows = (n + cols_grid - 1) // cols_grid
     
-    fig, axes = plt.subplots(rows, cols, figsize=(16, 4*rows))
+    fig, axes = plt.subplots(rows, cols_grid, figsize=(16, 4*rows))
     axes = axes.ravel()
-    
-    colors = plt.cm.tab10.colors
     
     for i, ls in enumerate(lifestages):
         subset = df[df['lifestage_mapped'] == ls]
         
-        axes[i].hist(subset[col], bins=30, color=colors[i % len(colors)], edgecolor='black', alpha=0.8)
+        # Use same color as histogram
+        color = colors[i % len(colors)]
+        
+        sns.boxplot(y=subset[col], ax=axes[i], color=color)
         axes[i].set_title(ls)
-        axes[i].set_xlabel(col.replace('_winsor', ''))
-        axes[i].set_ylabel("Count")
-        axes[i].grid(True, alpha=0.3)
+        axes[i].set_ylabel(col.replace('_winsor', ''))
     
     for j in range(n, len(axes)):
         axes[j].set_visible(False)
     
-    plt.suptitle(f"Histograms of {col.replace('_winsor','')} by Lifestage", fontsize=16)
+    plt.suptitle(f"Box Plots of {col.replace('_winsor','')} by Lifestage", fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    
-    # SAVE FIRST, then show
-    filename = f"Histogram_Grid_{col}.png"
-    plt.savefig(os.path.join(os.path.dirname(df_path), filename), dpi=300, bbox_inches='tight')
-    print(f"✅ Saved: {filename} ({n} lifestages)")
-    
     plt.show()
-    plt.close(fig)   # Important fix
+    
+    filename = f"BoxPlot_Grid_{col}.png"
+    plt.savefig(os.path.join(os.path.dirname(df_path), filename), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"✅ Saved: {filename} ({n} lifestages)")
 
-print("\n✅ All histograms created and saved successfully!")
+print("\n✅ All box plots created with same colors as histogram!")
