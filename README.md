@@ -1,61 +1,32 @@
 import plotly.express as px
 
-print("=== Line Chart with Mid-Point of Bin on X-Axis ===\n")
+# Simple Line Chart - Mean Default Rate by Bin and Lifestage
+fig = px.line(
+    mean_default,                     # Use the dataframe you already created
+    x='grossmargin_winsor_bin',       # Change this to your bin column
+    y='mean_default_rate',
+    color='lifestage_mapped',
+    markers=True,                     # Show dots on lines
+    title="Mean Default Rate by Grossmargin Bin and Lifestage",
+    labels={
+        'mean_default_rate': 'Average Default Rate',
+        'grossmargin_winsor_bin': 'Grossmargin Bin'
+    }
+)
 
-bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
+# Simple clean layout
+fig.update_layout(
+    height=600,
+    legend_title="Lifestage",
+    template="simple_white",          # Clean white background like Excel
+    xaxis_tickangle=-45
+)
 
-for bin_col in bin_cols:
-    if bin_col not in df.columns:
-        continue
-    
-    # Calculate mean default rate
-    mean_default = df.groupby(['lifestage_mapped', bin_col])['valid_def_ind_1yr'].mean().reset_index()
-    mean_default = mean_default.rename(columns={'valid_def_ind_1yr': 'mean_default_rate'})
-    
-    clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
-    
-    # === Calculate Mid-Point of each bin ===
-    def get_midpoint(label):
-        if label == 'Negative':
-            return -1000   # Place negative on left
-        if label == 'Missing':
-            return 999999
-        if isinstance(label, str) and '-' in label:
-            try:
-                parts = label.split('-')
-                low = float(parts[0].strip())
-                high = float(parts[1].strip())
-                return (low + high) / 2
-            except:
-                return 0
-        return 0
-    
-    mean_default['bin_midpoint'] = mean_default[bin_col].apply(get_midpoint)
-    
-    # Line Chart using Mid-Point on X-axis
-    fig = px.line(
-        mean_default,
-        x='bin_midpoint',
-        y='mean_default_rate',
-        color='lifestage_mapped',
-        markers=True,
-        title=f"Mean Default Rate by {clean_name} and Lifestage",
-        labels={
-            'mean_default_rate': 'Mean Default Rate (1 Year)',
-            'bin_midpoint': f'{clean_name} Mid Point'
-        }
-    )
-    
-    fig.update_layout(
-        height=650,
-        legend_title="Lifestage",
-        template="plotly_white"
-    )
-    
-    fig.update_xaxes(title=f"{clean_name} Mid Point")
-    fig.update_yaxes(title="Mean Default Rate")
-    
-    fig.show()
-    fig.write_html(os.path.join(os.path.dirname(df_path), f"Mean_Default_Midpoint_{bin_col}.html"))
-    
-    print(f"✅ Mid-point line chart saved for {bin_col}")
+fig.update_xaxes(title="Grossmargin Bin (Low to High)")
+fig.update_yaxes(title="Average Default Rate")
+
+fig.show()
+
+# Save as HTML (you can open in browser)
+fig.write_html("Mean_Default_Rate_Line_Simple.html")
+print("✅ Simple line chart created and saved!")
