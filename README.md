@@ -1,40 +1,38 @@
-import matplotlib.pyplot as plt
+Below is the code that does winsorization of ratios. now after that i want to create histograms (simple, not html, i showed you the sammple in attached).
+so, write a simplest, easy to understand, more human way python code to generate Histograms of raios by Lifestage_Mapped.
+get the 2x2 size of each and stack them together as showon in attached picture for example).
+ask any question.  
 
-print("=== Simple Line Charts ===\n")
+# WINSORIZATION (1% lower and 99% upper bound)
 
-# Change this list if you want to remove some lifestages
-exclude_lifestages = []  
 
-bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
+def apply_winsorization(df, ratio_col):
+    """Apply Winsorization at 1% and 99% bounds"""
+    if ratio_col not in df.columns:
+        print(f"⚠️ Column {ratio_col} not found")
+        return df
+    
+    
+    winsor_col = f"{ratio_col}_winsor"
+    
 
-for bin_col in bin_cols:
-    if bin_col not in df.columns:
-        continue
+    valid_values = df[ratio_col].dropna()
     
-    # Calculate average default rate
-    data = df.groupby(['lifestage_mapped', bin_col])['valid_def_ind_1yr'].mean().reset_index()
-    data = data.rename(columns={'valid_def_ind_1yr': 'mean_default_rate'})
+    if len(valid_values) > 0:
+        # Replace values below 1st percentile with 1st percentile and values above 99th percentile with 99th percentile
+        df[winsor_col] = mstats.winsorize(df[ratio_col], limits=[0.01, 0.01])
+        
+        print(f" Winsorization applied on {ratio_col}")
+        print(f"   Original Min: {df[ratio_col].min():.4f} | Max: {df[ratio_col].max():.4f}")
+        print(f"   Winsorized Min: {df[winsor_col].min():.4f} | Max: {df[winsor_col].max():.4f}")
+    else:
+        df[winsor_col] = np.nan
+        print(f"No valid values for winsorization in {ratio_col}")
     
-    # Remove unwanted lifestages if any
-    data = data[~data['lifestage_mapped'].isin(exclude_lifestages)]
-    
-    clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
-    
-    plt.figure(figsize=(12, 7))
-    
-    for lifestage in data['lifestage_mapped'].unique():
-        subset = data[data['lifestage_mapped'] == lifestage]
-        plt.plot(subset[bin_col], subset['mean_default_rate'], marker='o', label=lifestage)
-    
-    plt.title(f"Mean Default Rate by {clean_name} and Lifestage")
-    plt.xlabel(f"{clean_name} Bins")
-    plt.ylabel("Mean Default Rate")
-    plt.xticks(rotation=45)
-    plt.legend(title="Lifestage", bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.tight_layout()
-    plt.show()
-    
-    # Save the chart
-    plt.savefig(os.path.join(os.path.dirname(df_path), f"Mean_Default_Line_{bin_col}.png"), dpi=300, bbox_inches='tight')
-    print(f"Saved chart for {bin_col}")
+    return df
+
+
+
+df = apply_winsorization(df, 'grossmargin')
+df = apply_winsorization(df, 'netmargin')
+df = apply_winsorization(df, 'sales_to_assets')
