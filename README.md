@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 print("=== Histograms - All Lifestages with Filter Option ===\n")
 
 # 1. Easy to edit - Add or remove lifestages to exclude
-exclude_lifestages = ['Other','None']   # Example: ['Mid Stage', 'Other'] or leave empty
+exclude_lifestages = ['Other', 'None']   
 
 winsor_cols = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
 
@@ -11,7 +11,6 @@ for col in winsor_cols:
     if col not in df.columns:
         continue
     
-    # Get lifestages after excluding
     lifestages = [ls for ls in df['lifestage_mapped'].unique() 
                   if ls not in exclude_lifestages]
     
@@ -33,19 +32,18 @@ for col in winsor_cols:
         axes[i].set_ylabel("Count")
         axes[i].grid(True, alpha=0.3)
     
-    # Hide extra subplots
     for j in range(n, len(axes)):
         axes[j].set_visible(False)
     
     plt.suptitle(f"Histograms of {col.replace('_winsor','')} by Lifestage", fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.show()
     
-    # Save properly
+    # SAVE FIRST, then show
     filename = f"Histogram_Grid_{col}.png"
     plt.savefig(os.path.join(os.path.dirname(df_path), filename), dpi=300, bbox_inches='tight')
-    plt.close()   # This fixes blank image issue
-    
     print(f"✅ Saved: {filename} ({n} lifestages)")
+    
+    plt.show()
+    plt.close(fig)   # Important fix
 
 print("\n✅ All histograms created and saved successfully!")
