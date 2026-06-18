@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 
-print("=== Simple Matplotlib Line Charts ===\n")
+print("=== Simple Matplotlib Line Charts with Filter ===\n")
+
+# === ADD YOUR FILTER HERE (one liner) ===
+exclude_lifestages = ['Mid Stage', 'Other']   # ← Change this list as needed
 
 bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
 
@@ -8,15 +11,17 @@ for bin_col in bin_cols:
     if bin_col not in df.columns:
         continue
     
-    # Calculate mean default rate
+    # Calculate mean
     mean_default = df.groupby(['lifestage_mapped', bin_col])['valid_def_ind_1yr'].mean().reset_index()
     mean_default = mean_default.rename(columns={'valid_def_ind_1yr': 'mean_default_rate'})
+    
+    # Filter out unwanted lifestages (one liner)
+    mean_default = mean_default[~mean_default['lifestage_mapped'].isin(exclude_lifestages)]
     
     clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
     
     plt.figure(figsize=(12, 7))
     
-    # Plot one line per lifestage
     for lifestage in mean_default['lifestage_mapped'].unique():
         data = mean_default[mean_default['lifestage_mapped'] == lifestage]
         plt.plot(data[bin_col], data['mean_default_rate'], marker='o', label=lifestage)
@@ -30,8 +35,5 @@ for bin_col in bin_cols:
     plt.tight_layout()
     plt.show()
     
-    # Save as image
     plt.savefig(os.path.join(os.path.dirname(df_path), f"Mean_Default_Line_{bin_col}.png"), dpi=300, bbox_inches='tight')
-    print(f"✅ Simple chart saved for {bin_col}")
-
-print("\n✅ All simple line charts created using Matplotlib!")
+    print(f"✅ Chart saved for {bin_col} (excluded: {exclude_lifestages})")
