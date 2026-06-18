@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 print("=== Histograms - All Lifestages with Filter Option ===\n")
 
 # 1. Easy to edit - Add or remove lifestages to exclude
-exclude_lifestages = []   # Example: ['Mid Stage', 'Other'] or leave empty
+exclude_lifestages = ['Other','None']   # Example: ['Mid Stage', 'Other'] or leave empty
 
 winsor_cols = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
 
