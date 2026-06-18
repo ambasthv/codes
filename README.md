@@ -1,14 +1,12 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-print("=== Box Plots - Same Colors as Histogram ===\n")
+print("=== Box Plots - Fixed Saving ===\n")
 
-# Easy to edit
 exclude_lifestages = []   
 
 winsor_cols = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
 
-# Same color palette as histogram
 colors = plt.cm.tab10.colors
 
 for col in winsor_cols:
@@ -27,8 +25,6 @@ for col in winsor_cols:
     
     for i, ls in enumerate(lifestages):
         subset = df[df['lifestage_mapped'] == ls]
-        
-        # Use same color as histogram
         color = colors[i % len(colors)]
         
         sns.boxplot(y=subset[col], ax=axes[i], color=color)
@@ -40,12 +36,13 @@ for col in winsor_cols:
     
     plt.suptitle(f"Box Plots of {col.replace('_winsor','')} by Lifestage", fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.show()
     
+    # SAVE FIRST
     filename = f"BoxPlot_Grid_{col}.png"
     plt.savefig(os.path.join(os.path.dirname(df_path), filename), dpi=300, bbox_inches='tight')
-    plt.close()
+    print(f"✅ Saved: {filename}")
     
-    print(f"✅ Saved: {filename} ({n} lifestages)")
+    plt.show()
+    plt.close(fig)   # Important fix
 
-print("\n✅ All box plots created with same colors as histogram!")
+print("\n✅ All box plots saved successfully!")
