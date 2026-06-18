@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 
-print("=== Histograms - All Lifestages with Different Colors ===\n")
+print("=== Histograms - All Lifestages with Filter Option ===\n")
+
+# 1. Easy to edit - Add or remove lifestages to exclude
+exclude_lifestages = []   # Example: ['Mid Stage', 'Other'] or leave empty
 
 winsor_cols = ['grossmargin_winsor', 'netmargin_winsor', 'sales_to_assets_winsor']
 
@@ -8,16 +11,18 @@ for col in winsor_cols:
     if col not in df.columns:
         continue
     
-    lifestages = df['lifestage_mapped'].unique()
-    n = len(lifestages)
+    # Get lifestages after excluding
+    lifestages = [ls for ls in df['lifestage_mapped'].unique() 
+                  if ls not in exclude_lifestages]
     
-    # Dynamic grid (2 rows, enough columns)
+    n = len(lifestages)
     cols = 4
     rows = (n + cols - 1) // cols
+    
     fig, axes = plt.subplots(rows, cols, figsize=(16, 4*rows))
     axes = axes.ravel()
     
-    colors = plt.cm.tab10.colors  # Different colors for each lifestage
+    colors = plt.cm.tab10.colors
     
     for i, ls in enumerate(lifestages):
         subset = df[df['lifestage_mapped'] == ls]
@@ -39,7 +44,7 @@ for col in winsor_cols:
     # Save properly
     filename = f"Histogram_Grid_{col}.png"
     plt.savefig(os.path.join(os.path.dirname(df_path), filename), dpi=300, bbox_inches='tight')
-    plt.close()
+    plt.close()   # This fixes blank image issue
     
     print(f"✅ Saved: {filename} ({n} lifestages)")
 
