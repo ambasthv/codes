@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-
 print("=== Simple Line Chart with Proper Sorting (Negative Left) ===\n")
 
 exclude_lifestages = []  
