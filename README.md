@@ -1,69 +1,51 @@
-import plotly.express as px
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+Cell In[47], line 60
+     56 fig.show()
+     59 filename = f"Mean_Default_Line_{bin_col}.png"
+---> 60 fig.write_image(os.path.join(os.path.dirname(df_path), filename))
 
-print("=== Simple Line Charts with Filter Option ===\n")
+File ~\AppData\Roaming\Python\Python312\site-packages\plotly\basedatatypes.py:3895, in BaseFigure.write_image(self, *args, **kwargs)
+   3891     if kwargs.get("engine", None):
+   3892         warnings.warn(
+   3893             ENGINE_PARAM_DEPRECATION_MSG, DeprecationWarning, stacklevel=2
+   3894         )
+-> 3895 return pio.write_image(self, *args, **kwargs)
 
-# Easy to edit - Add or remove lifestages to exclude
-exclude_lifestages = []   # Example: ['Mid Stage', 'Other']
+File ~\AppData\Roaming\Python\Python312\site-packages\plotly\io\_kaleido.py:528, in write_image(fig, file, format, scale, width, height, validate, engine)
+    524 format = infer_format(path, format)
+    526 # Request image
+    527 # Do this first so we don't create a file if image conversion fails
+--> 528 img_data = to_image(
+    529     fig,
+    530     format=format,
+    531     scale=scale,
+    532     width=width,
+    533     height=height,
+    534     validate=validate,
+    535     engine=engine,
+    536 )
+    538 # Open file
+    539 if path is None:
+    540     # We previously failed to make sense of `file` as a pathlib object.
+    541     # Attempt to write to `file` as an open file descriptor.
 
-bin_cols = ['grossmargin_winsor_bin', 'netmargin_winsor_bin', 'sales_to_assets_winsor_bin']
+File ~\AppData\Roaming\Python\Python312\site-packages\plotly\io\_kaleido.py:345, in to_image(fig, format, width, height, scale, validate, engine)
+    343     # Raise informative error message if Kaleido is not installed
+    344     if not kaleido_available():
+--> 345         raise ValueError(
+    346             """
+    347 Image export using the "kaleido" engine requires the Kaleido package,
+    348 which can be installed using pip:
+    349 
+    350     $ pip install --upgrade kaleido
+    351 """
+    352         )
+    354     # Convert figure to dict (and validate if requested)
+    355     fig_dict = validate_coerce_fig_to_dict(fig, validate)
 
-for bin_col in bin_cols:
-    if bin_col not in df.columns:
-        continue
-    
-    # Calculate mean
-    mean_default = df.groupby(['lifestage_mapped', bin_col])[default_col].mean().reset_index()
-    mean_default = mean_default.rename(columns={default_col: 'mean_default_rate'})
-    
-    # Filter lifestages
-    mean_default = mean_default[~mean_default['lifestage_mapped'].isin(exclude_lifestages)]
-    
-    clean_name = bin_col.replace('_winsor_bin', '').replace('_', ' ').title()
-    
-    def get_sort_value(label):
-        if label == 'Negative':
-            return -999999
-        if label == 'Missing':
-            return 999999
-        if isinstance(label, str) and '-' in str(label):
-            try:
-                return float(str(label).split('-')[0].strip())
-            except:
-                return 0
-        return 0
-    
-    mean_default['sort_key'] = mean_default[bin_col].apply(get_sort_value)
-    mean_default = mean_default.sort_values('sort_key')
-    
-    # Line Chart (same look as before)
-    fig = px.line(
-        mean_default,
-        x=bin_col,
-        y='mean_default_rate',
-        color='lifestage_mapped',
-        markers=True,
-        title=f"Mean Default Rate by {clean_name} and Lifestage",
-        labels={
-            'mean_default_rate': 'Mean Default Rate (1 Year)',
-            bin_col: f'{clean_name} Range'
-        }
-    )
-    
-    fig.update_layout(
-        xaxis_tickangle=-45,
-        height=650,
-        legend_title="Lifestage",
-        template="plotly_white"
-    )
-    
-    fig.update_xaxes(title=f"{clean_name} Bins")
-    fig.update_yaxes(title="Mean Default Rate")
-    
-    fig.show()
-    
-    # Save as PNG (not HTML)
-    filename = f"Mean_Default_Line_{bin_col}.png"
-    fig.write_image(os.path.join(os.path.dirname(df_path), filename))
-    print(f"✅ Saved PNG: {filename}")
+ValueError: 
+Image export using the "kaleido" engine requires the Kaleido package,
+which can be installed using pip:
 
-print("\n✅ All line charts saved as PNG files!")
+    $ pip install --upgrade kaleido
