@@ -43,6 +43,8 @@ for bin_col in bin_cols:
     # Remove box around chart
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
     
     plt.title(f"Mean Default Rate by {clean_name} and Lifestage")
     plt.xlabel(f"{clean_name} Bins")
