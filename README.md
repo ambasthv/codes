@@ -1,25 +1,48 @@
-# Quick Data Quality Check for Ratios (Before Winsorization)
-ratio_cols = ['grossmargin', 'netmargin', 'sales_to_assets']
+✅ Here is a clear summary table for the three ratios based on your cleaning rules from Excel + .py file:
+Rule / Treatment
+grossmargin
+netmargin
+sales_to_assets
+Negative Handling
+Set to Null
+Set to Null
+Set to Null
+Zero Numerator Handling
+Set to Null
+Set to Null
+Set to Null
+Zero Denominator Handling
+Set to Null
+Set to Null
+Set to Null
+Positive Infinite
+Set to Null
+Set to Null
+Set to Null
+Negative Infinite
+Set to Null
+Set to Null
+Set to Null
+Cap (Upper Bound)
+99.75th percentile
+99.75th percentile
+99.75th percentile
+Floor (Lower Bound)
+0.25th percentile
+0.25th percentile
+0
+Null Treatment
+Imputed with Median (if enabled)
+Imputed with Median (if enabled)
+Imputed with Median (if enabled)
+Flag Columns Created
+_negative_flag, _zero_flag, _inf_flag, _null_flag, _cap_floor_flag, _invalid_flag
+Same as left
+Same as left
 
-print("=== Quick Data Quality Check for Ratios ===\n")
-
-for col in ratio_cols:
-    if col in df.columns:
-        total_rows = len(df)
-        missing_count = df[col].isna().sum()
-        non_null_count = df[col].notna().sum()
-        
-        print(f"'{col}' → Exists")
-        print(f"   Type          : {df[col].dtype}")
-        print(f"   Total Rows    : {total_rows:,}")
-        print(f"   Missing/Null  : {missing_count:,} ({missing_count/total_rows*100:.2f}%)")
-        print(f"   Non-Null      : {non_null_count:,}")
-        
-        if pd.api.types.is_numeric_dtype(df[col]):
-            print(f"   Min Value     : {df[col].min():.4f}")
-            print(f"   Max Value     : {df[col].max():.4f}")
-            print(f"   Mean          : {df[col].mean():.4f}")
-        print("-" * 60)
-    else:
-        print(f"'{col}' → MISSING")
-        print("-" * 60)
+Summary:
+	•	All three ratios follow similar strict rules.
+	•	Invalid values (negative, zero, infinite) are mostly set to Null.
+	•	Extreme values are capped/floored.
+	•	Missing values are imputed with median (if null_treatment=True).
+Would you like me to add this summary as a DataFrame in code so you can export it to Excel?
