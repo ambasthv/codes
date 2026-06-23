@@ -1,15 +1,18 @@
-# 2. Read cleaning rules from Excel
+# ====================== READ CLEANING RULES FROM EXCEL ======================
 cleaning_rules = read_cleaning_xlsx(
-    file_path="cleaning_file.xlsx", 
-    sheet_key='ratios_variables'   # Correct sheet name
+    file_path="Nick_cleaning_file.xlsx", 
+    sheet_key='ratio_variables'   # Your sheet name
 )
 
-# 3. Apply cleaning (only for your 3 ratios)
+print("Cleaning rules loaded successfully!")
+print("Variables in cleaning file:")
+print(cleaning_rules['ratio_variables']['variable'].tolist())
+
+# ====================== APPLY CLEANING ======================
 df = apply_cleaning(
     df=df, 
-    variable_cleaning=cleaning_rules['ratios_variables'], 
-    null_treatment=True
+    variable_cleaning=cleaning_rules['ratio_variables'], 
+    null_treatment=True   # Set to False if you don't want median imputation
 )
 
-print("✅ Cleaning from .py file applied successfully!")
-print("Applied to ratios in rows 8,9,10 as per your file.")
+print("\n✅ Cleaning rules + flags + treatment applied successfully!")
