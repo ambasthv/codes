@@ -1,39 +1,34 @@
-✅ Updated Import Code (for your file name):
-Cell 1: Add Path & Import (Run this first)
-import sys
-import os
+again same sort of error, path is 
+c:\Users\v\OneDrive\MODELLING WORK\Old Download 22 june\
 
-# Add current folder to Python path
-current_dir = os.getcwd()  # Gets current notebook folder
-sys.path.append(current_dir)
+---------------------------------------------------------------------------
+FileNotFoundError                         Traceback (most recent call last)
+Cell In[19], line 5
+      2 df = construct_ratio(df)
+      4 # 2. Read cleaning rules from Excel
+----> 5 cleaning_rules = read_cleaning_xlsx(
+      6     file_path="your_cleaning_file.xlsx", 
+      7     sheet_key='ratio_sheet'
+      8 )
+     10 # 3. Apply cleaning (rules + flags + treatment)
+     11 df = apply_cleaning(
+     12     df=df, 
+     13     variable_cleaning=cleaning_rules['ratio_sheet'], 
+     14     null_treatment=True
+     15 )
 
-print("Path added:", current_dir)
+File c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\MODELLING WORK\Old Download 22 june\05 05 26 ID_BSD Code Updates20260505094251\02. Data\01. Master Database\segmentation_analysis_utils.py:170, in read_cleaning_xlsx(file_path, sheet_key)
+    166 if not sheet_name:
+    167     raise ValueError(f"No sheet configured for key: {sheet_key}")
+    169 cleaning_excels = {
+--> 170     sheet_key: pd.read_excel(
+    171         io=file_path,
+    172         sheet_name=sheet_name
+    173     )
+    174 }
+...
+--> 882         handle = open(handle, ioargs.mode)
+    883     handles.append(handle)
+    885 # Convert BytesIO or file objects passed with an encoding
 
-# Import from your .py file
-from segmentation_analysis_utils import construct_ratio, apply_cleaning, read_cleaning_xlsx, get_ratio_flag_counts, median_by_group
-
-print("✅ Functions imported successfully from segmentation_analysis_utils.py")
-
-Cell 2: Use the Functions
-# 1. Construct ratios
-df = construct_ratio(df)
-
-# 2. Read cleaning rules from Excel
-cleaning_rules = read_cleaning_xlsx(
-    file_path="your_cleaning_file.xlsx", 
-    sheet_key='ratio_sheet'
-)
-
-# 3. Apply cleaning (rules + flags + treatment)
-df = apply_cleaning(
-    df=df, 
-    variable_cleaning=cleaning_rules['ratio_sheet'], 
-    null_treatment=True
-)
-
-print("✅ Cleaning from .py file applied successfully!")
-
-Important:
-	•	Make sure segmentation_analysis_utils.py is in the same folder as your notebook.
-	•	Run Cell 1 first, then Cell 2.
-If you still get “ModuleNotFoundError”, tell me the full path of your notebook and the .py file. I’ll give you the exact code.
+FileNotFoundError: [Errno 2] No such file or directory: 'your_cleaning_file.xlsx'
