@@ -1,14 +1,17 @@
-# apply forwardfill from last observed
-sort_cols = ['cif', 'cust_line_nbr', 'period']
-available_sort_cols = [col for col in sort_cols if col in mixed_uw.columns]
-
-# Fix: Make ascending match the actual number of columns
-ascending_list = [True] * len(available_sort_cols)
-
-mixed_uw = mixed_uw.sort_values(
-    by=available_sort_cols, 
-    ascending=ascending_list
-)\
-    .groupby(['cif', 'cust_line_nbr'])\
-        .apply(forwardfill_last_method)\
-            .reset_index(drop=True)
+code to install all below libs in one shot, no error 
+numpy==1.26.4
+pandas==2.2.2
+jupyter==1.1.1
+ipykernel==6.29.5
+openpyxl==3.1.5
+xlwings==0.33.15
+python-dotenv==1.0.1
+pyarrow==16.1.0
+matplotlib==3.8.4
+scipy==1.11.4
+scikit-learn==1.5.2
+tqdm==4.67.1
+PyYAML==6.0.2
+statsmodels==0.14.4
+mlxtend==0.23.3
+seaborn==0.13.2
