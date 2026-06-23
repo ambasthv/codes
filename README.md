@@ -1,57 +1,42 @@
-import pandas as pd
+#FINAL EXPORT
 
-# Create the summary table as DataFrame
-summary_data = {
-    'Rule / Treatment': [
-        'Negative Handling', 
-        'Zero Numerator Handling', 
-        'Zero Denominator Handling', 
-        'Positive Infinite', 
-        'Negative Infinite', 
-        'Cap (Upper Bound)', 
-        'Floor (Lower Bound)', 
-        'Null Treatment', 
-        'Flag Columns Created'
-    ],
-    'grossmargin': [
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        '99.75th percentile', 
-        '0.25th percentile', 
-        'Imputed with Median (if enabled)', 
-        '_negative_flag, _zero_flag, _inf_flag, _null_flag, _cap_floor_flag, _invalid_flag'
-    ],
-    'netmargin': [
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        '99.75th percentile', 
-        '0.25th percentile', 
-        'Imputed with Median (if enabled)', 
-        '_negative_flag, _zero_flag, _inf_flag, _null_flag, _cap_floor_flag, _invalid_flag'
-    ],
-    'sales_to_assets': [
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        'Set to Null', 
-        '99.75th percentile', 
-        '0', 
-        'Imputed with Median (if enabled)', 
-        '_negative_flag, _zero_flag, _inf_flag, _null_flag, _cap_floor_flag, _invalid_flag'
-    ]
-}
+final_cols = [
+    'obligor_id', 'grade_date', 'total_assets', 'net_sales', 'gross_profit', 'net_profit',
+    'lifestage_mapped',"financial_statement_found","default_ind_1yr","valid_def_ind_1yr",
+    'grossmargin', 'grossmargin_winsor', 'grossmargin_winsor_bin',
+    'netmargin', 'netmargin_winsor', 'netmargin_winsor_bin',
+    'sales_to_assets', 'sales_to_assets_winsor', 'sales_to_assets_winsor_bin',
+    'grossmargin_flag', 'netmargin_flag', 'sales_to_assets_flag'
+]
 
-summary_df = pd.DataFrame(summary_data)
+final_cols = [col for col in final_cols if col in df.columns]
 
-# Save to Excel
-summary_df.to_excel(os.path.join(os.path.dirname(df_path), "Ratio_Rules_Summary.xlsx"), index=False)
+export_df = df[final_cols].copy()
 
-print("✅ Summary table saved as 'Ratio_Rules_Summary.xlsx'")
-print(summary_df)
+output_path = os.path.join(os.path.dirname(df_path), "RATIO_WITH_WINSORIZATION_BINS.xlsx")
+
+with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+    export_df.to_excel(writer, sheet_name="Main_Data", index=False)
+    
+    # Summary Sheet
+    ratios = ['grossmargin', 'netmargin', 'sales_to_assets']
+    summary_list = []
+    for r in ratios:
+        w = f"{r}_winsor"
+        b = f"{r}_winsor_bin5"
+        if r in df.columns:
+            stats = {
+                'Ratio': r,
+                'Count': df[r].count(),
+                'Nulls': df[r].isna().sum(),
+                'Negative': (df[r] < 0).sum(),
+                'Min_Original': df[r].min(),
+                'Max_Original': df[r].max(),
+                'Min_Winsor': df[w].min() if w in df.columns else np.nan,
+                'Max_Winsor': df[w].max() if w in df.columns else np.nan
+            }
+            summary_list.append(stats)
+    
+    pd.DataFrame(summary_list).round(4).to_excel(writer, sheet_name="Summary_Stats", index=False)
+
+print(f"   {output_path}")
