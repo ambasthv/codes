@@ -1,240 +1,293 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import seaborn as sns
+from scipy import stats
+from scipy.stats import mstats
+import warnings
+import os
+import plotly.express as px
+from pathlib import Path
 
-def construct_ratio(df):
+
+
+
+sns.set_theme(style="whitegrid", palette="Set2", font_scale=1.05)
+
+warnings.filterwarnings("ignore")
+
+df_path = "C:\\Users\\e\\outputs"
+
+# Read data
+df_main = "20260616 0816 Final Modeling Dataset V1.parquet" 
+df_main = pd.read_parquet(os.path.join(df_path, df_main)) 
+print(f"Original data shape: {df_main.shape}")
+
+# Filter ID/BSD
+df_filt = df_main[df_main['model_routing'] == 'ID / BSD']
+print(f"Filtered df_filt shape: {df_filt.shape}")
+
+# LIFESTAGE MAPPING (Updated)
+lifestage_mapping = {
+    "Angel / Seed Firm": "Other",
+    "Angel/Seed Firm": "Other",
+    "Angel/Seed Fund": "Other",
+    "Corp Tech": "Corp Tech",
+    "Early Stage": "Early Stage",
+    "Emerging Tech": "Emerging Tech",
+    "ET": "Emerging Tech",
+    "Large Corp": "Large Corporate",
+    "Large Corporate": "Large Corporate",
+    "Late Stage": "Late Stage",
+    "Mid Stage": "Mid Stage",
+    "Mid stage": "Mid Stage",
+    "Non-Niche": "Other",
+    "Non-niche": "Other",
+    "PCS": "Other",
+    "Private Bank": "Other",
+    "Private Equity": "Other",
+    "Private Equity Fiem": "Other",
+    "Private Equity Firm": "Other",
+    "Sponsor Led Buyout": "Other",
+    "VC Firm": "Other",
+    "Venture Capital Firm": "Other",
+    "Wine": "Other",
+    "None": "None"
+}
+
+#  Apply Mapping 
+df = df_filt.copy()        
+
+# Clean original column first
+df['lifestage_original'] = df['lifestage'].astype(str)
+df['lifestage_clean'] = df['lifestage'].astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
+
+# Apply mapping
+df['lifestage_mapped'] = df['lifestage_clean'].map(lifestage_mapping)
+
+# Fill unmapped values with "Other"
+df['lifestage_mapped'] = df['lifestage_mapped'].fillna("Other")
+
+print(" Lifestage Mapping Applied Successfully!")
+print("\nDistribution of lifestage_mapped:")
+print(df['lifestage_mapped'].value_counts())
+
+
+#CHeck raw columns type , total count and missing count
+cols_to_check = ['total_assets', 'net_sales', 'gross_profit', 'net_profit']
+
+print("=== Column Check - Total, Missing & Min ===\n")
+
+for col in cols_to_check:
+    if col in df.columns:
+        total_rows = len(df)
+        missing_count = df[col].isna().sum()
+        non_null_count = df[col].notna().sum()
+        
+        print(f"'{col}' → Exists")
+        print(f"   Type          : {df[col].dtype}")
+        print(f"   Total Rows    : {total_rows:,}")
+        print(f"   Missing/Null  : {missing_count:,} ({missing_count/total_rows*100:.2f}%)")
+        print(f"   Non-Null      : {non_null_count:,}")
+        
+        # Min value 
+        if pd.api.types.is_numeric_dtype(df[col]):
+            print(f"   Min Value     : {df[col].min():.4f}")
+        print("-" * 50)
+    else:
+        print(f"'{col}' → MISSING")
+        print("-" * 50)
+
+
+
+
+# DROP ROWS WITH MISSING VALUES 
+cols_to_check = ['total_assets', 'net_sales', 'gross_profit', 'net_profit']
+
+
+# Count Before
+print("BEFORE Dropping:")
+print(f"Total Rows: {len(df):,}\n")
+
+before_stats = {}
+for col in cols_to_check:
+    if col in df.columns:
+        missing = df[col].isna().sum()
+        before_stats[col] = {
+            'Total_Rows': len(df),
+            'Missing': missing,
+            'Missing_Pct': round(missing / len(df) * 100, 2)
+        }
+        print(f"'{col}': Missing = {missing:,} ({before_stats[col]['Missing_Pct']}%)")
+
+#  Drop rows
+df_clean = df.dropna(subset=cols_to_check).copy()
+
+# count After
+print("\nAFTER Dropping:")
+print(f"Remaining Rows: {len(df_clean):,}")
+print(f"Rows Dropped  : {len(df) - len(df_clean):,} ({(len(df) - len(df_clean))/len(df)*100:.2f}%)\n")
+
+after_stats = {}
+for col in cols_to_check:
+    if col in df_clean.columns:
+        missing_after = df_clean[col].isna().sum()
+        after_stats[col] = {
+            'Total_Rows': len(df_clean),
+            'Missing': missing_after,
+            'Missing_Pct': round(missing_after / len(df_clean) * 100, 2)
+        }
+        print(f"'{col}': Missing = {missing_after:,} ({after_stats[col]['Missing_Pct']}%)")
+
+
+df = df_clean
+
+
+# Filter on financial_statement_found == 1 and update df
+
+print("Before filtering:", len(df), "rows")
+
+df = df[df['financial_statement_found'] == 1].copy()
+
+print("After filtering (only financial_statement_found = 1):", len(df), "rows")
+print(f"Remaining rows: {len(df):,}")
+
+
+# INITIAL RATIO CALCULATION 
+
+df = df.copy()
+
+#  Calculations 
+df['grossmargin'] = np.where(
+    df['net_sales'] == 0, 
+    np.nan, 
+    (df['gross_profit'] / df['net_sales']) * 100
+)
+
+df['netmargin'] = np.where(
+    df['net_sales'] == 0, 
+    np.nan, 
+    (df['net_profit'] / df['net_sales']) * 100
+)
+
+df['sales_to_assets'] = np.where(
+    df['total_assets'] == 0, 
+    np.nan, 
+    df['net_sales'] / df['total_assets']
+)
+
+print("Raw ratios calculated")
+
+
+# RULES + FLAGS new
+
+def apply_ratio_rules(df, ratio_col, num_col, den_col, ratio_name):
+  
     
-    df['capex'] = 0
-    df['(EBITDA-Capex)/(Interest Expense+CPLTD)'] = (df['ebitda'] - df['capex']) / (df['interest_expense'] + df['cpltd'])
-    #df['Total Debt/Equity'] = df['total_debt'] --confirm how this is calculated with Swati
-    #df["(Cash+Marketable Securities+Net Accts Receivable Trade+Acct Receivable Other)/Current Liabilities"] = (df['cash'] + df['market_securities'] + df['acctsrecother'] + df['net_accounts_receivable']) / df['current_liabilities']
-    #df["Quick Ratio*(Current Liabilities/(Current Liabilities-Deferred Revenue))"] = df["Quick Ratio"] * (df['current_liabilities']/(df['current_liabilities'] - df['deferred_revenue']))
-    df['Net Profit/Net Sales_x_100'] = (df['net_profit'] / df['net_sales']) * 100
+    num = df[num_col]
+    den = df[den_col]
+    
+   
+    df[f'{ratio_col}_flag'] = 'Normal'
+    
+    # ZERO NUMERATOR → Set to NULL
+    
+    zero_num = (num == 0) & (den != 0)
+    df.loc[zero_num, ratio_col] = np.nan
+    df.loc[zero_num, f'{ratio_col}_flag'] = 'Zero Numerator'
+    
+    # ZERO DENOMINATOR → Set to NULL
 
+    zero_den = (den == 0)
+    df.loc[zero_den, ratio_col] = np.nan
+    df.loc[zero_den, f'{ratio_col}_flag'] = 'Zero Denominator'
+    
+    # NEGATIVE HANDLING (After Zero Rules)
+
+    both_neg = (num < 0) & (den < 0)
+    only_denom_neg = (den < 0) & (num >= 0) & (~zero_num) & (~zero_den)
+    
+    df.loc[only_denom_neg, f'{ratio_col}_flag'] = 'Only Denom Negative'
+    df.loc[both_neg, f'{ratio_col}_flag'] = 'Both Negative'
+    
+    #  Negative Rules
+    df.loc[only_denom_neg, ratio_col] = df[ratio_col].max()   # Only Denom Negative → MAX
+    df.loc[both_neg, ratio_col] = df[ratio_col].min()         # Both Negative → MIN
+    
+    # INFINITE HANDLING → Set to NULL
+    
+    df[ratio_col] = df[ratio_col].replace([np.inf, -np.inf], np.nan)
+    
+    print(f"Rules applied for {ratio_col}")
     return df
 
 
-def apply_cleaning(df, variable_cleaning, null_treatment=False):
-    """
-    Apply various cleaning operations to specified variables based on defined rules.
-    :param df: DataFrame containing the data to be cleaned.
-    :param variable_cleaning: DataFrame containing the cleaning rules and configurations for each variable.
-    :param grp_var: The name of the grouping variable/column used for aggregation in certain operations.
-    :param special_value_dict: Dictionary containing special values for specific segments and variables.
-    :param null_treatment: Boolean indicating whether to treat null values by filling them with calculated medians.
-    :param special_null_treatment: Boolean indicating whether to apply special treatment for null values based on the provided dictionary.
-    :param set_flags_to_0: Boolean indicating whether to reset all flags to 0 after processing.
-    :param seg_list: List of segments for which special null treatment may be applied.
-    :return: DataFrame with the cleaned variables and additional flag columns indicating the treatment applied.
-    """
-    for _, row in variable_cleaning.iterrows():
-        variable = row['variable']
-        floor_pct = row['floor_pct']
-        floor_val = row['floor_val']
-        cap_pct = row['cap_pct']
-        cap_val = row['cap_val']
-        negative_handling = row['negative_handling']
-        zero_handling = row['zero_handling']
-        positive_infinite_handling = row['positive_infinite_handling']
-        negative_infinite_handling = row['negative_infinite_handling']
-        special_cap_floor_treatment = row['special_cap_floor_treatment']
+# APPLY TO  RATIOS 
 
-        # Nulls >>
+df = apply_ratio_rules(df, 'grossmargin', 'gross_profit', 'net_sales', 'Gross Margin')
+df = apply_ratio_rules(df, 'netmargin', 'net_profit', 'net_sales', 'Net Margin')
+df = apply_ratio_rules(df, 'sales_to_assets', 'net_sales', 'total_assets', 'Sales to Assets')
 
-        # Flag
-        # Create a new column to flag values
-        flag_col = f'{variable}_null_flag'
-        df[flag_col] = 0
-        # Flag the values
-        df[flag_col] = np.where(df[variable].isna(), 1, 0)
+# IMPUTE MISSING WITH MEDIAN (reconcile first, and then drop null/missing- use Nick's code)
+
+
+ratios = ['grossmargin', 'netmargin', 'sales_to_assets']
+
+for ratio in ratios:
+    if ratio not in df.columns:
+        continue
+    
+    flag_col = f"{ratio}_flag"
+    median_value = df[ratio].median()
+    missing_count = df[ratio].isna().sum()
+    
+    # Replace NaN with median
+    df[ratio] = df[ratio].fillna(median_value)
+    
+    # Update Flag 
+    if flag_col in df.columns:
+        # If flag is already something → append ", Median Imputed"
+        mask = df[ratio].notna() & df[flag_col].notna()  
+        df.loc[mask, flag_col] = df.loc[mask, flag_col] #+ ", Median Imputed"
         
-        # Negatives >>
+        # If flag was blank/NaN → put only "Median Imputed"
+        df.loc[df[flag_col].isna(), flag_col] #= "Median Imputed"
+    
+    print(f" {ratio}:")
+    print(f"   Median used          : {median_value:.4f}")
+    print(f"   Missing replaced     : {missing_count:,}")
 
-        # Flag
-        # Create a new column to flag values
-        flag_col = f'{variable}_negative_flag'
-        df[flag_col] = 0       
+# WINSORIZATION (1% lower and 99% upper bound)
 
-        # Treat
-        if negative_handling=='set to null':
-            df.loc[lambda x: (x[variable]<0), flag_col] = 1
-            df.loc[lambda x: (x[variable]<0), variable] = None
-        elif negative_handling=='impute to median':
-            df.loc[lambda x: (x[variable]<0), flag_col] = 1
-            df.loc[lambda x: (x[variable]<0), variable] = median_by_group(df, variable)
-        elif negative_handling=='set to max':
-            df.loc[lambda x: (x[variable]<0), flag_col] = 1
-            df.loc[lambda x: (x[variable]<0), variable] = 999999
-        elif negative_handling=='set to min':
-            df.loc[lambda x: (x[variable]<0), flag_col] = 1
-            df.loc[lambda x: (x[variable]<0), variable] = -999999
-               
-        # Zeros >>
 
-        # Flag
-        # Create a new column to flag values
-        flag_col = f'{variable}_zero_flag'
-        df[flag_col] = 0
+def apply_winsorization(df, ratio_col):
+    """Apply Winsorization at 1% and 99% bounds"""
+    if ratio_col not in df.columns:
+        print(f"⚠️ Column {ratio_col} not found")
+        return df
+    
+    
+    winsor_col = f"{ratio_col}_winsor"
+    
 
-        # Treat
-        if zero_handling=='set to null':
-            df.loc[lambda x: (x[variable]==0), flag_col] = 1
-            df.loc[lambda x: (x[variable]==0), variable] = None
-
-        # Infinites >>
-
-        # Flag
-        # Create a new column to flag values
-        flag_col = f'{variable}_inf_flag'
-        df[flag_col] = 0
-
-        # Treat
-        if positive_infinite_handling =='set to max':
-            df.loc[lambda x: (x[variable]== np.inf), flag_col] = 1
-            df.loc[lambda x: (x[variable]== np.inf), variable] = 999999
-        elif positive_infinite_handling =='set to null':
-            df.loc[lambda x: (x[variable]== np.inf), flag_col] = 1
-            df.loc[lambda x: (x[variable]== np.inf), variable] = None
-        if negative_infinite_handling =='set to min':
-            df.loc[lambda x: (x[variable]==-np.inf), flag_col] = 1
-            df.loc[lambda x: (x[variable]==-np.inf), variable] = -999999
-        elif negative_infinite_handling =='set to null':
-            df.loc[lambda x: (x[variable]==-np.inf), flag_col] = 1
-            df.loc[lambda x: (x[variable]==-np.inf), variable] = None
-
-        # Cap and floor >>
-
-        # Select variable column
-        var_col = df[lambda x: (x[variable]!=-np.inf) & (x[variable]!=np.inf) & (x[variable]!=-999999) & (x[variable]!=999999)][variable]
-     
-        # Determine floor value
-        if pd.notna(floor_pct) and pd.notna(floor_val):
-            floor_value = max(var_col.quantile(floor_pct), floor_val)
-        elif pd.notna(floor_pct):
-            floor_value = var_col.quantile(floor_pct)
-        else:
-            floor_value = floor_val
+    valid_values = df[ratio_col].dropna()
+    
+    if len(valid_values) > 0:
+        # Replace values below 1st percentile with 1st percentile and values above 99th percentile with 99th percentile
+        df[winsor_col] = mstats.winsorize(df[ratio_col], limits=[0.01, 0.01])
         
-        # Determine cap value
-        if pd.notna(cap_pct) and pd.notna(cap_val):
-            cap_value = min(var_col.quantile(cap_pct), cap_val)
-        elif pd.notna(cap_pct):
-            cap_value = var_col.quantile(cap_pct)
-        else:
-            cap_value = cap_val
-
-        # Flag
-        # Create a new column to flag values
-        flag_col = f'{variable}_cap_floor_flag'
-        df[flag_col] = 0
-        # Flag the values
-        df[flag_col] = np.where( (df[variable] < floor_value) | (df[variable] > cap_value) , 1, 0)
-
-        # Cap & floor
-        if special_cap_floor_treatment=='set to null':
-            df.loc[df[variable] < floor_value, variable] = None
-            df.loc[df[variable] > cap_value, variable] = None
-        else:
-            df[variable] = df[variable].clip(lower=floor_value, upper=cap_value)
-
-        # Create invalid flag
-        df[f'{variable}_invalid_flag'] = np.where( (df[f'{variable}_negative_flag']==1) | (df[f'{variable}_zero_flag']==1) | (df[f'{variable}_inf_flag']==1) , 1, 0)
-
-        # Treat
-        if null_treatment:
-            df[variable] = df[variable].fillna(median_by_group(df, variable))
-
+        print(f" Winsorization applied on {ratio_col}")
+        print(f"   Original Min: {df[ratio_col].min():.4f} | Max: {df[ratio_col].max():.4f}")
+        print(f"   Winsorized Min: {df[winsor_col].min():.4f} | Max: {df[winsor_col].max():.4f}")
+    else:
+        df[winsor_col] = np.nan
+        print(f"No valid values for winsorization in {ratio_col}")
+    
     return df
 
 
-def median_by_group(df, variable):
-    """
-    Calculate the population-level median for a specified variable.
-    :param df: DataFrame containing the data.
-    :param variable: The name of the variable/column for which the median is to be computed.
-    :return: The median value for the variable.
-    """
-    return df[variable].median()
 
-def read_cleaning_xlsx(file_path, sheet_key='ratio_sheet'):
-    """
-    Read a single cleaning Excel sheet and return it in a dictionary.
-    :param file_path: Path to the Excel file.
-    :param sheet_key: Key from cfg['cleaning_sheets'] that identifies which tab to read.
-    :return: Dictionary containing only the requested sheet.
-    """
-    sheet_name = 'ratio_variables'
-    if not sheet_name:
-        raise ValueError(f"No sheet configured for key: {sheet_key}")
-
-    cleaning_excels = {
-        sheet_key: pd.read_excel(
-            io=file_path,
-            sheet_name=sheet_name
-        )
-    }
-
-    return cleaning_excels
-
-def get_ratio_flag_counts(modeling_dataset, cleaning_excels, sheet_key='ratio_sheet'):
-    """
-    Build per-variable flag counts and percentages as a summary table.
-
-    For each variable listed in cleaning_excels[sheet_key]['variable'] this computes:
-    - total_obs
-    - negative/inf/zero/null flag counts
-    - negative/inf/zero/null flag percentages
-    """
-    ratio_variables = (
-        cleaning_excels[sheet_key]['variable']
-        .dropna()
-        .astype(str)
-        .tolist()
-    )
-
-    total_rows = len(modeling_dataset)
-    rows = []
-
-    for variable in ratio_variables:
-        negative_col = f'{variable}_negative_flag'
-        # Fallback for occasional misspelling in naming
-        negative_col_alt = f'{variable}_negatve_flag'
-        inf_col = f'{variable}_inf_flag'
-        zero_col = f'{variable}_zero_flag'
-        null_col = f'{variable}_null_flag'
-
-        negative_count = 0
-        if negative_col in modeling_dataset.columns:
-            negative_count = int((modeling_dataset[negative_col] == 1).sum())
-        elif negative_col_alt in modeling_dataset.columns:
-            negative_count = int((modeling_dataset[negative_col_alt] == 1).sum())
-
-        inf_count = int((modeling_dataset[inf_col] == 1).sum()) if inf_col in modeling_dataset.columns else 0
-        zero_count = int((modeling_dataset[zero_col] == 1).sum()) if zero_col in modeling_dataset.columns else 0
-        null_count = int((modeling_dataset[null_col] == 1).sum()) if null_col in modeling_dataset.columns else 0
-
-        if total_rows > 0:
-            negative_pct = (negative_count / total_rows) * 100
-            inf_pct = (inf_count / total_rows) * 100
-            zero_pct = (zero_count / total_rows) * 100
-            null_pct = (null_count / total_rows) * 100
-        else:
-            negative_pct = 0.0
-            inf_pct = 0.0
-            zero_pct = 0.0
-            null_pct = 0.0
-
-        rows.append({
-            'variable': variable,
-            'total_obs': total_rows,
-            'negative_flag_count': negative_count,
-            'inf_flag_count': inf_count,
-            'zero_flag_count': zero_count,
-            'null_flag_count': null_count,
-            'negative_flag_pct': round(negative_pct, 4),
-            'inf_flag_pct': round(inf_pct, 4),
-            'zero_flag_pct': round(zero_pct, 4),
-            'null_flag_pct': round(null_pct, 4),
-        })
-
-    summary_df = pd.DataFrame(rows)
-    return summary_df
+df = apply_winsorization(df, 'grossmargin')
+df = apply_winsorization(df, 'netmargin')
+df = apply_winsorization(df, 'sales_to_assets')
