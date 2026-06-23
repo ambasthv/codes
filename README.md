@@ -1,18 +1,25 @@
-# ====================== READ CLEANING RULES FROM EXCEL ======================
-cleaning_rules = read_cleaning_xlsx(
-    file_path="Nick_cleaning_file.xlsx", 
-    sheet_key='ratio_variables'   # Your sheet name
-)
+# Quick Data Quality Check for Ratios (Before Winsorization)
+ratio_cols = ['grossmargin', 'netmargin', 'sales_to_assets']
 
-print("Cleaning rules loaded successfully!")
-print("Variables in cleaning file:")
-print(cleaning_rules['ratio_variables']['variable'].tolist())
+print("=== Quick Data Quality Check for Ratios ===\n")
 
-# ====================== APPLY CLEANING ======================
-df = apply_cleaning(
-    df=df, 
-    variable_cleaning=cleaning_rules['ratio_variables'], 
-    null_treatment=True   # Set to False if you don't want median imputation
-)
-
-print("\n✅ Cleaning rules + flags + treatment applied successfully!")
+for col in ratio_cols:
+    if col in df.columns:
+        total_rows = len(df)
+        missing_count = df[col].isna().sum()
+        non_null_count = df[col].notna().sum()
+        
+        print(f"'{col}' → Exists")
+        print(f"   Type          : {df[col].dtype}")
+        print(f"   Total Rows    : {total_rows:,}")
+        print(f"   Missing/Null  : {missing_count:,} ({missing_count/total_rows*100:.2f}%)")
+        print(f"   Non-Null      : {non_null_count:,}")
+        
+        if pd.api.types.is_numeric_dtype(df[col]):
+            print(f"   Min Value     : {df[col].min():.4f}")
+            print(f"   Max Value     : {df[col].max():.4f}")
+            print(f"   Mean          : {df[col].mean():.4f}")
+        print("-" * 60)
+    else:
+        print(f"'{col}' → MISSING")
+        print("-" * 60)
