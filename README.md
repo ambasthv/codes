@@ -1,31 +1,36 @@
+master_db=construct_ratio(master_db), 
+gives below error, explain this
+
+
 ---------------------------------------------------------------------------
-FileNotFoundError                         Traceback (most recent call last)
-Cell In[10], line 5
-      2 master_db = pd.read_parquet(master_db_path)   # Use full path directly
-      4 # load variable cleaning excels
-----> 5 cleaning_excels = read_cleaning_xlsx(support_path)  # Use full path
-      7 print(f"Loaded master data shape: {master_db.shape}")
-      8 print("✅ Data and cleaning rules loaded successfully!")
+KeyError                                  Traceback (most recent call last)
+File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\pandas\core\indexes\base.py:3805, in Index.get_loc(self, key)
+   3804 try:
+-> 3805     return self._engine.get_loc(casted_key)
+   3806 except KeyError as err:
 
-File c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\MODELLING WORK\segmentation_analysis- Nick code 29 June\code\segmentation_analysis_utils.py:179, in read_cleaning_xlsx(file_path, sheet_key)
-    175 if not sheet_name:
-    176     raise ValueError(f"No sheet configured for key: {sheet_key}")
-    178 cleaning_excels = {
---> 179     sheet_key: pd.read_excel(
-    180         io=file_path,
-    181         sheet_name=sheet_name
-    182     )
-    183 }
-    185 return cleaning_excels
+File index.pyx:167, in pandas._libs.index.IndexEngine.get_loc()
 
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\pandas\io\excel\_base.py:495, in read_excel(io, sheet_name, header, names, index_col, usecols, dtype, engine, converters, true_values, false_values, skiprows, nrows, na_values, keep_default_na, na_filter, verbose, parse_dates, date_parser, date_format, thousands, decimal, comment, skipfooter, storage_options, dtype_backend, engine_kwargs)
-    493 if not isinstance(io, ExcelFile):
-    494     should_close = True
---> 495     io = ExcelFile(
-    496         io,
+File index.pyx:196, in pandas._libs.index.IndexEngine.get_loc()
+
+File pandas\\_libs\\hashtable_class_helper.pxi:7081, in pandas._libs.hashtable.PyObjectHashTable.get_item()
+
+File pandas\\_libs\\hashtable_class_helper.pxi:7089, in pandas._libs.hashtable.PyObjectHashTable.get_item()
+
+KeyError: 'total_net_worth'
+
+The above exception was the direct cause of the following exception:
+
+KeyError                                  Traceback (most recent call last)
+Cell In[16], line 1
+----> 1 master_db = construct_ratio(master_db)
+
+File c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\MODELLING WORK\segmentation_analysis- Nick code 29 June\code\segmentation_analysis_utils.py:8, in construct_ratio(df)
+      6     df['capex'] = 0
 ...
---> 882         handle = open(handle, ioargs.mode)
-    883     handles.append(handle)
-    885 # Convert BytesIO or file objects passed with an encoding
+   3815     #  InvalidIndexError. Otherwise we fall through and re-raise
+   3816     #  the TypeError.
+   3817     self._check_indexing_error(key)
 
-FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/YWA95/OneDrive - First-Citizens Bank & Trust Co/MODELLING WORK/segmentation_analysis- Nick code 29 June/data/Support/006222026_variable transformations python.xlsx'
+KeyError: 'total_net_worth'
+Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
