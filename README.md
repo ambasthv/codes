@@ -1,56 +1,284 @@
+SO, i have two codes "segmentation_analysis_utils.py" and "Seg Analysis Ratio Cleaning.ipynb"(both are saved in same folder on once drive)
+in  "segmentation_analysis_utils.py", ther is lot of ratios calculating functions are written and saved.
+in "Seg Analysis Ratio Cleaning.ipynb", i am calling this functions and calculating the ratios based on the rules given .py code.
+path is same for both the .py and .ipynb file, but i still get the error. 
+1. "segmentation_analysis_utils.py" code
+import pandas as pd
+import numpy as np
 
-# ====================== FINAL EXPORT WITH ALL FLAGS ======================
-
-final_cols = [
-    'obligor_id', 'grade_date', 'total_assets', 'net_sales', 'gross_profit', 'net_profit',
-    'lifestage_mapped', 'financial_statement_found', 'default_ind_1yr', 'valid_def_ind_1yr',
+def construct_ratio(df):
     
-    # Grossmargin Group
-    'grossmargin', 'grossmargin_winsor', 'grossmargin_winsor_bin',
-    'grossmargin_negative_flag', 'grossmargin_zero_flag', 'grossmargin_inf_flag',
-    'grossmargin_null_flag', 'grossmargin_cap_floor_flag', 'grossmargin_invalid_flag',
-    
-    # Netmargin Group
-    'netmargin', 'netmargin_winsor', 'netmargin_winsor_bin',
-    'netmargin_negative_flag', 'netmargin_zero_flag', 'netmargin_inf_flag',
-    'netmargin_null_flag', 'netmargin_cap_floor_flag', 'netmargin_invalid_flag',
-    
-    # Sales to Assets Group
-    'sales_to_assets', 'sales_to_assets_winsor', 'sales_to_assets_winsor_bin',
-    'sales_to_assets_negative_flag', 'sales_to_assets_zero_flag', 'sales_to_assets_inf_flag',
-    'sales_to_assets_null_flag', 'sales_to_assets_cap_floor_flag', 'sales_to_assets_invalid_flag'
-]
+    df['capex'] = 0
+    df['(EBITDA-Capex)/(Interest Expense+CPLTD)'] = (df['ebitda'] - df['capex']) / (df['interest_expense'] + df['cpltd'])
+    df['Total Debt/Equity'] = df['total_debt']/df['total_net_worth']
+    #df["(Cash+Marketable Securities+Net Accts Receivable Trade+Acct Receivable Other)/Current Liabilities"] = (df['cash'] + df['market_securities'] + df['acctsrecother'] + df['net_accounts_receivable']) / df['current_liabilities']
+    #df["Quick Ratio*(Current Liabilities/(Current Liabilities-Deferred Revenue))"] = df["Quick Ratio"] * (df['current_liabilities']/(df['current_liabilities'] - df['deferred_revenue']))
+#OPERATING PERFORMANCE
+    df['Gross Profit/Net Sales_x_100'] = (df['gross_profit'] / df['net_sales']) * 100
+    df['Net Profit/Net Sales_x_100'] = (df['net_profit'] / df['net_sales']) * 100
+    df['Net Sales/Total Assets'] = (df['net_sales'] / df['total_assets'])
+#----
+    df['Cash and Equivalents/Total Debt'] = (df['cash_and_equivalents'] / df['total_debt'])
+    df['Quick_Ratio'] = (df['cash'] + df['market_securities'] + df['net_accounts_receivable'] + df['acctsrecother']) / \
+                    df['current_liabilities']
+    df['Adj Quick Ratio'] = (df['Quick_Ratio'] * df['current_liabilities']) / (
+        df['current_liabilities'] - df['deferred_revenue'])
 
-# Keep only existing columns
-final_cols = [col for col in final_cols if col in df.columns]
+    return df
 
-export_df = df[final_cols].copy()
 
-output_path = os.path.join(os.path.dirname(df_path), "RATIO_WITH_WINSORIZATION_BINS.xlsx")
+def apply_cleaning(df, variable_cleaning, null_treatment=False):
+    """
+    Apply various cleaning operations to specified variables based on defined rules.
+    :param df: DataFrame containing the data to be cleaned.
+    :param variable_cleaning: DataFrame containing the cleaning rules and configurations for each variable.
+    :param grp_var: The name of the grouping variable/column used for aggregation in certain operations.
+    :param special_value_dict: Dictionary containing special values for specific segments and variables.
+    :param null_treatment: Boolean indicating whether to treat null values by filling them with calculated medians.
+    :param special_null_treatment: Boolean indicating whether to apply special treatment for null values based on the provided dictionary.
+    :param set_flags_to_0: Boolean indicating whether to reset all flags to 0 after processing.
+    :param seg_list: List of segments for which special null treatment may be applied.
+    :return: DataFrame with the cleaned variables and additional flag columns indicating the treatment applied.
+    """
+    for _, row in variable_cleaning.iterrows():
+        variable = row['variable']
+        floor_pct = row['floor_pct']
+        floor_val = row['floor_val']
+        cap_pct = row['cap_pct']
+        cap_val = row['cap_val']
+        negative_handling = row['negative_handling']
+        zero_handling = row['zero_handling']
+        positive_infinite_handling = row['positive_infinite_handling']
+        negative_infinite_handling = row['negative_infinite_handling']
+        special_cap_floor_treatment = row['special_cap_floor_treatment']
 
-with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-    export_df.to_excel(writer, sheet_name="Main_Data", index=False)
-    
-    # Summary Sheet
-    ratios = ['grossmargin', 'netmargin', 'sales_to_assets']
-    summary_list = []
-    for r in ratios:
-        w = f"{r}_winsor"
-        b = f"{r}_winsor_bin"
-        if r in df.columns:
-            stats = {
-                'Ratio': r,
-                'Count': df[r].count(),
-                'Nulls': df[r].isna().sum(),
-                'Negative': (df[r] < 0).sum(),
-                'Min_Original': df[r].min(),
-                'Max_Original': df[r].max(),
-                'Min_Winsor': df[w].min() if w in df.columns else np.nan,
-                'Max_Winsor': df[w].max() if w in df.columns else np.nan
-            }
-            summary_list.append(stats)
-    
-    pd.DataFrame(summary_list).round(4).to_excel(writer, sheet_name="Summary_Stats", index=False)
+        # Nulls >>
 
-print(f"✅ Exported successfully: {output_path}")
-print(f"Total Columns Exported: {len(final_cols)}")
+        # Flag
+        # Create a new column to flag values
+        flag_col = f'{variable}_null_flag'
+        df[flag_col] = 0
+        # Flag the values
+        df[flag_col] = np.where(df[variable].isna(), 1, 0)
+        
+        # Negatives >>
+
+        # Flag
+        # Create a new column to flag values
+        flag_col = f'{variable}_negative_flag'
+        df[flag_col] = 0       
+
+        # Treat
+        if negative_handling=='set to null':
+            df.loc[lambda x: (x[variable]<0), flag_col] = 1
+            df.loc[lambda x: (x[variable]<0), variable] = None
+        elif negative_handling=='impute to median':
+            df.loc[lambda x: (x[variable]<0), flag_col] = 1
+            df.loc[lambda x: (x[variable]<0), variable] = median_by_group(df, variable)
+        elif negative_handling=='set to max':
+            df.loc[lambda x: (x[variable]<0), flag_col] = 1
+            df.loc[lambda x: (x[variable]<0), variable] = 999999
+        elif negative_handling=='set to min':
+            df.loc[lambda x: (x[variable]<0), flag_col] = 1
+            df.loc[lambda x: (x[variable]<0), variable] = -999999
+               
+        # Zeros >>
+
+        # Flag
+        # Create a new column to flag values
+        flag_col = f'{variable}_zero_flag'
+        df[flag_col] = 0
+
+        # Treat
+        if zero_handling=='set to null':
+            df.loc[lambda x: (x[variable]==0), flag_col] = 1
+            df.loc[lambda x: (x[variable]==0), variable] = None
+
+        # Infinites >>
+
+        # Flag
+        # Create a new column to flag values
+        flag_col = f'{variable}_inf_flag'
+        df[flag_col] = 0
+
+        # Treat
+        if positive_infinite_handling =='set to max':
+            df.loc[lambda x: (x[variable]== np.inf), flag_col] = 1
+            df.loc[lambda x: (x[variable]== np.inf), variable] = 999999
+        elif positive_infinite_handling =='set to null':
+            df.loc[lambda x: (x[variable]== np.inf), flag_col] = 1
+            df.loc[lambda x: (x[variable]== np.inf), variable] = None
+        if negative_infinite_handling =='set to min':
+            df.loc[lambda x: (x[variable]==-np.inf), flag_col] = 1
+            df.loc[lambda x: (x[variable]==-np.inf), variable] = -999999
+        elif negative_infinite_handling =='set to null':
+            df.loc[lambda x: (x[variable]==-np.inf), flag_col] = 1
+            df.loc[lambda x: (x[variable]==-np.inf), variable] = None
+
+        # Cap and floor >>
+
+        # Select variable column
+        var_col = df[lambda x: (x[variable]!=-np.inf) & (x[variable]!=np.inf) & (x[variable]!=-999999) & (x[variable]!=999999)][variable]
+     
+        # Determine floor value
+        if pd.notna(floor_pct) and pd.notna(floor_val):
+            floor_value = max(var_col.quantile(floor_pct), floor_val)
+        elif pd.notna(floor_pct):
+            floor_value = var_col.quantile(floor_pct)
+        else:
+            floor_value = floor_val
+        
+        # Determine cap value
+        if pd.notna(cap_pct) and pd.notna(cap_val):
+            cap_value = min(var_col.quantile(cap_pct), cap_val)
+        elif pd.notna(cap_pct):
+            cap_value = var_col.quantile(cap_pct)
+        else:
+            cap_value = cap_val
+
+        # Flag
+        # Create a new column to flag values
+        flag_col = f'{variable}_cap_floor_flag'
+        df[flag_col] = 0
+        # Flag the values
+        df[flag_col] = np.where( (df[variable] < floor_value) | (df[variable] > cap_value) , 1, 0)
+
+        # Cap & floor
+        if special_cap_floor_treatment=='set to null':
+            df.loc[df[variable] < floor_value, variable] = None
+            df.loc[df[variable] > cap_value, variable] = None
+        else:
+            df[variable] = df[variable].clip(lower=floor_value, upper=cap_value)
+
+        # Create invalid flag
+        df[f'{variable}_invalid_flag'] = np.where( (df[f'{variable}_negative_flag']==1) | (df[f'{variable}_zero_flag']==1) | (df[f'{variable}_inf_flag']==1) , 1, 0)
+
+        # Treat
+        if null_treatment:
+            df[variable] = df[variable].fillna(median_by_group(df, variable))
+
+    return df
+
+
+def median_by_group(df, variable):
+    """
+    Calculate the population-level median for a specified variable.
+    :param df: DataFrame containing the data.
+    :param variable: The name of the variable/column for which the median is to be computed.
+    :return: The median value for the variable.
+    """
+    return df[variable].median()
+
+def read_cleaning_xlsx(file_path, sheet_key='ratio_sheet'):
+    """
+    Read a single cleaning Excel sheet and return it in a dictionary.
+    :param file_path: Path to the Excel file.
+    :param sheet_key: Key from cfg['cleaning_sheets'] that identifies which tab to read.
+    :return: Dictionary containing only the requested sheet.
+    """
+    sheet_name = 'ratio_variables'
+    if not sheet_name:
+        raise ValueError(f"No sheet configured for key: {sheet_key}")
+
+    cleaning_excels = {
+        sheet_key: pd.read_excel(
+            io=file_path,
+            sheet_name=sheet_name
+        )
+    }
+
+    return cleaning_excels
+
+def get_ratio_flag_counts(modeling_dataset, cleaning_excels, sheet_key='ratio_sheet'):
+    """
+    Build per-variable flag counts and percentages as a summary table.
+
+    For each variable listed in cleaning_excels[sheet_key]['variable'] this computes:
+    - total_obs
+    - negative/inf/zero/null flag counts
+    - negative/inf/zero/null flag percentages
+    """
+    ratio_variables = (
+        cleaning_excels[sheet_key]['variable']
+        .dropna()
+        .astype(str)
+        .tolist()
+    )
+
+    total_rows = len(modeling_dataset)
+    rows = []
+
+    for variable in ratio_variables:
+        negative_col = f'{variable}_negative_flag'
+        # Fallback for occasional misspelling in naming
+        negative_col_alt = f'{variable}_negatve_flag'
+        inf_col = f'{variable}_inf_flag'
+        zero_col = f'{variable}_zero_flag'
+        null_col = f'{variable}_null_flag'
+
+        negative_count = 0
+        if negative_col in modeling_dataset.columns:
+            negative_count = int((modeling_dataset[negative_col] == 1).sum())
+        elif negative_col_alt in modeling_dataset.columns:
+            negative_count = int((modeling_dataset[negative_col_alt] == 1).sum())
+
+        inf_count = int((modeling_dataset[inf_col] == 1).sum()) if inf_col in modeling_dataset.columns else 0
+        zero_count = int((modeling_dataset[zero_col] == 1).sum()) if zero_col in modeling_dataset.columns else 0
+        null_count = int((modeling_dataset[null_col] == 1).sum()) if null_col in modeling_dataset.columns else 0
+
+        if total_rows > 0:
+            negative_pct = (negative_count / total_rows) * 100
+            inf_pct = (inf_count / total_rows) * 100
+            zero_pct = (zero_count / total_rows) * 100
+            null_pct = (null_count / total_rows) * 100
+        else:
+            negative_pct = 0.0
+            inf_pct = 0.0
+            zero_pct = 0.0
+            null_pct = 0.0
+
+        rows.append({
+            'variable': variable,
+            'total_obs': total_rows,
+            'negative_flag_count': negative_count,
+            'inf_flag_count': inf_count,
+            'zero_flag_count': zero_count,
+            'null_flag_count': null_count,
+            'negative_flag_pct': round(negative_pct, 4),
+            'inf_flag_pct': round(inf_pct, 4),
+            'zero_flag_pct': round(zero_pct, 4),
+            'null_flag_pct': round(null_pct, 4),
+        })
+
+2."Seg Analysis Ratio Cleaning.ipynb" codes
+
+cell 1 (in this only i am getting error:ModuleNotFoundError: No module named 'model_development') 
+### load config and db path
+import os
+import sys
+from pathlib import Path
+
+import pandas as pd # type: ignore
+from warnings import simplefilter
+simplefilter(action="ignore", category=Warning)
+
+from model_development.segmentation_analysis.code.segmentation_analysis_utils import apply_cleaning, read_cleaning_xlsx, get_ratio_flag_counts, construct_ratio
+import datetime
+timestamp = datetime.datetime.now().strftime('%Y%m%d')
+print(timestamp)
+
+# Automatically update custom py scripts that are loaded in
+%load_ext autoreload
+%autoreload 2
+
+cell 2 (tell me which one to change and to what?)
+
+db_path = "C:/Users/02. Data Prep/04. IDBSD Handover/PD Pipeline Handover"
+master_db_path = "02. Data/01. Master Database/outputs/20260618 1349 Final Modeling Dataset V1.parquet"
+support_path = "model_development/segmentation_analysis/data/Support/06222026_variable transformations python.xlsx"
+export_path = "model_development/segmentation_analysis/data/Outputs"
+
+    summary_df = pd.DataFrame(rows)
+    return summary_df
+
+after this, thre are multiple steps, lets fix this first and then we will go ahead.
