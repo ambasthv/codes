@@ -1,10 +1,6 @@
-cleaning_rules = read_cleaning_xlsx(
-    file_path="Nick_cleaning_file.xlsx", 
-    sheet_key='ratio_variables'
-)
-
-# Force variable column to be string
-cleaning_rules['ratio_variables']['variable'] = cleaning_rules['ratio_variables']['variable'].astype(str).str.strip()
-
-print("Variable names after fix:")
-print(cleaning_rules['ratio_variables']['variable'].tolist())
+df_temp = pd.read_excel("Nick_cleaning_file.xlsx", sheet_name='ratio_variables')
+print(df_temp.head(15))   # Show first 15 rows
+print("\nData types of columns:")
+print(df_temp.dtypes)
+print("\nVariable column values:")
+print(df_temp['variable'].tolist())
