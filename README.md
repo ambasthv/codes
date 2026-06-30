@@ -1,36 +1,35 @@
-master_db=construct_ratio(master_db), 
-gives below error, explain this
-
+modeling_dataset = apply_cleaning(df = master_db_filt, variable_cleaning = cleaning_excels['ratio_sheet'], null_treatment = True)
+while running the above code, iget the error as below, 
 
 ---------------------------------------------------------------------------
 KeyError                                  Traceback (most recent call last)
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\pandas\core\indexes\base.py:3805, in Index.get_loc(self, key)
-   3804 try:
--> 3805     return self._engine.get_loc(casted_key)
-   3806 except KeyError as err:
+Cell In[8], line 1
+----> 1 modeling_dataset = apply_cleaning(df = master_db_filt, variable_cleaning = cleaning_excels['ratio_sheet'], null_treatment = True)
 
-File index.pyx:167, in pandas._libs.index.IndexEngine.get_loc()
+File c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\MODELLING WORK\segmentation_analysis- Nick code 29 June\code\segmentation_analysis_utils.py:77, in apply_cleaning(df, variable_cleaning, null_treatment)
+     75     df.loc[lambda x: (x[variable]<0), variable] = 999999
+     76 elif negative_handling=='set to min':
+---> 77     df.loc[lambda x: (x[variable]<0), flag_col] = 1
+     78     df.loc[lambda x: (x[variable]<0), variable] = -999999
+     80 # Zeros >>
+     81 
+     82 # Flag
+     83 # Create a new column to flag values
 
-File index.pyx:196, in pandas._libs.index.IndexEngine.get_loc()
+File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\pandas\core\indexing.py:907, in _LocationIndexer.__setitem__(self, key, value)
+    905     maybe_callable = com.apply_if_callable(key, self.obj)
+    906     key = self._check_deprecated_callable_usage(key, maybe_callable)
+--> 907 indexer = self._get_setitem_indexer(key)
+    908 self._has_valid_setitem_indexer(key)
+    910 iloc = self if self.name == "iloc" else self.obj.iloc
 
-File pandas\\_libs\\hashtable_class_helper.pxi:7081, in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-File pandas\\_libs\\hashtable_class_helper.pxi:7089, in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-KeyError: 'total_net_worth'
-
-The above exception was the direct cause of the following exception:
-
-KeyError                                  Traceback (most recent call last)
-Cell In[16], line 1
-----> 1 master_db = construct_ratio(master_db)
-
-File c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\MODELLING WORK\segmentation_analysis- Nick code 29 June\code\segmentation_analysis_utils.py:8, in construct_ratio(df)
-      6     df['capex'] = 0
+File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\pandas\core\indexing.py:774, in _LocationIndexer._get_setitem_indexer(self, key)
+    771 if isinstance(key, tuple):
+    772     with suppress(IndexingError):
 ...
-   3815     #  InvalidIndexError. Otherwise we fall through and re-raise
-   3816     #  the TypeError.
-   3817     self._check_indexing_error(key)
+-> 6249         raise KeyError(f"None of [{key}] are in the [{axis_name}]")
+   6251     not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
+   6252     raise KeyError(f"{not_found} not in index")
 
-KeyError: 'total_net_worth'
+KeyError: "None of [Index([('N', 'e', 't', ' ', 'S', 'a', 'l', 'e', 's', '/', 'T', 'o', 't', 'a', 'l', ' ', 'A', 's', 's', 'e', 't', 's'), ('N', 'e', 't', ' ', 'S', 'a', 'l', 'e', 's', '/', 'T', 'o', 't', 'a', 'l', ' ', 'A', 's', 's', 'e', 't', 's')], dtype='object')] are in the [index]"
 Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
