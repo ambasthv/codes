@@ -1,14 +1,11 @@
-# Change these two column names as per your need
-col1 = 'lifestage_mapped'
-col2 = 'grossmargin_winsor_bin'   # Example - change as needed
+# Count of each unique value in column "1205"
+industry_counts = df['1205'].value_counts().reset_index()
+industry_counts.columns = ['Industry_Type', 'Count']
 
-# Get unique combinations
-unique_df = df[[col1, col2]].drop_duplicates().sort_values(by=[col1, col2])
+print(industry_counts)
 
-output_path = os.path.join(os.path.dirname(df_path), f"Unique_{col1}_and_{col2}.xlsx")
+# Save to Excel
+output_path = os.path.join(os.path.dirname(df_path), "Industry_Counts.xlsx")
+industry_counts.to_excel(output_path, index=False)
 
-unique_df.to_excel(output_path, index=False)
-
-print(f"✅ Unique combinations exported!")
-print(f"Total unique rows: {len(unique_df)}")
-print(f"File saved: {output_path}")
+print(f"\n✅ Saved to: {output_path}")
