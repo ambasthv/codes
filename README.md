@@ -1,34 +1,13 @@
-import os
+so, now i have the bins created for each 1205 segment (like hardware, softwere , life science and other)
+get me the count of each with respect to the bins, 
+example whats count of hardware, softwere, life science and other for "Gross Profit/Net Sales_x_100" per bin (all 5 bins)
 
-default_col = 'valid_def_ind_1yr'
-df[default_col] = pd.to_numeric(df[default_col], errors='coerce')
+example table (some rendom ration)
 
-bin_cols = ['Gross Profit/Net Sales_x_100_winsor_bin', 
-            'Net Profit/Net Sales_x_100_winsor_bin', 
-            'Net Sales/Total Assets_winsor_bin']
+Ratio	Bin	Bin Range	Hardware	Software	Life Sciences	Other
+Current Ratio	1	0.1751-0.8556	1337	10441	1500	598
+	2	0.8557-1.4393	2069	9613	1509	690
+	3	1.4394-2.4601	2474	8662	1992	749
+	4	2.4601-5.3996	2506	7561	3020	790
+	5	5.3997-96.2511	2236	7620	2990	1031
 
-for bin_col in bin_cols:
-    if bin_col not in df.columns:
-        continue
-      
-    mean_default = df.groupby(['niche_mapped', bin_col])[default_col].mean().reset_index()
-    mean_default = mean_default.rename(columns={default_col: 'mean_default_rate'})
-    
-    print(f"\nMean Default Rate by Niche & {bin_col}:")
-    pivot_table = mean_default.pivot(
-        index='niche_mapped', 
-        columns=bin_col, 
-        values='mean_default_rate'
-    ).round(4)
-    print(pivot_table)
-    
-    # Save to Desktop (simple path)
-    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-    filename = f"Mean_Default_by_{bin_col}.xlsx"
-    output_path = os.path.join(desktop_path, filename)
-    
-    mean_default.to_excel(output_path, index=False)
-    
-    print(f"✅ Saved to Desktop: {filename}")
-
-print("\n✅ All files saved to Desktop!")
