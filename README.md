@@ -1,11 +1,43 @@
-# Count of each unique value in column "1205"
-industry_counts = df['1205'].value_counts().reset_index()
-industry_counts.columns = ['Industry_Type', 'Count']
+dont change anything, but i am getting error while executing this code, all the files are saved in same folders. 
+### load config and db path
+import os
+import sys
+from pathlib import Path
 
-print(industry_counts)
+import pandas as pd # type: ignore
+from warnings import simplefilter
+simplefilter(action="ignore", category=Warning)
 
-# Save to Excel
-output_path = os.path.join(os.path.dirname(df_path), "Industry_Counts.xlsx")
-industry_counts.to_excel(output_path, index=False)
+#from model_development.segmentation_analysis.code.segmentation_analysis_utils 
 
-print(f"\n✅ Saved to: {output_path}")
+from model_development.segmentation_analysis.code.segmentation_analysis_utils import apply_cleaning, read_cleaning_xlsx, get_ratio_flag_counts, construct_ratio
+
+import datetime
+timestamp = datetime.datetime.now().strftime('%Y%m%d')
+print(timestamp)
+
+# Automatically update custom py scripts that are loaded in
+%load_ext autoreload
+%autoreload 2
+
+error is 
+### load config and db path
+import os
+import sys
+from pathlib import Path
+
+import pandas as pd # type: ignore
+from warnings import simplefilter
+simplefilter(action="ignore", category=Warning)
+
+#from model_development.segmentation_analysis.code.segmentation_analysis_utils 
+
+from model_development.segmentation_analysis.code.segmentation_analysis_utils import apply_cleaning, read_cleaning_xlsx, get_ratio_flag_counts, construct_ratio
+
+import datetime
+timestamp = datetime.datetime.now().strftime('%Y%m%d')
+print(timestamp)
+
+# Automatically update custom py scripts that are loaded in
+%load_ext autoreload
+%autoreload 2
