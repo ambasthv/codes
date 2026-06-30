@@ -1,8 +1,14 @@
-# Export top 30 rows with all columns
-output_path = os.path.join(os.path.dirname(df_path), "Top_30_Rows_All_Columns.xlsx")
+# Change these two column names as per your need
+col1 = 'lifestage_mapped'
+col2 = 'grossmargin_winsor_bin'   # Example - change as needed
 
-df.head(30).to_excel(output_path, index=False)
+# Get unique combinations
+unique_df = df[[col1, col2]].drop_duplicates().sort_values(by=[col1, col2])
 
-print(f"✅ Top 30 rows exported successfully!")
+output_path = os.path.join(os.path.dirname(df_path), f"Unique_{col1}_and_{col2}.xlsx")
+
+unique_df.to_excel(output_path, index=False)
+
+print(f"✅ Unique combinations exported!")
+print(f"Total unique rows: {len(unique_df)}")
 print(f"File saved: {output_path}")
-print(f"Shape: {df.head(30).shape}")
