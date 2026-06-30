@@ -1,13 +1,28 @@
-so, now i have the bins created for each 1205 segment (like hardware, softwere , life science and other)
-get me the count of each with respect to the bins, 
-example whats count of hardware, softwere, life science and other for "Gross Profit/Net Sales_x_100" per bin (all 5 bins)
+print("=== Count per Bin per Niche ===\n")
 
-example table (some rendom ration)
+bin_cols = ['Gross Profit/Net Sales_x_100_winsor_bin', 
+            'Net Profit/Net Sales_x_100_winsor_bin', 
+            'Net Sales/Total Assets_winsor_bin']
 
-Ratio	Bin	Bin Range	Hardware	Software	Life Sciences	Other
-Current Ratio	1	0.1751-0.8556	1337	10441	1500	598
-	2	0.8557-1.4393	2069	9613	1509	690
-	3	1.4394-2.4601	2474	8662	1992	749
-	4	2.4601-5.3996	2506	7561	3020	790
-	5	5.3997-96.2511	2236	7620	2990	1031
+for bin_col in bin_cols:
+    if bin_col not in df.columns:
+        continue
+    
+    # Count per bin and niche_mapped
+    count_df = df.groupby([bin_col, 'niche_mapped']).size().unstack(fill_value=0)
+    count_df = count_df.reset_index()
+    count_df = count_df.rename(columns={bin_col: 'Bin'})
+    
+    # Add Ratio name
+    ratio_name = bin_col.replace('_winsor_bin', '')
+    count_df.insert(0, 'Ratio', ratio_name)
+    
+    print(f"\n{ratio_name} - Counts per Bin:")
+    print(count_df)
+    
+    # Save to Excel
+    output_path = os.path.join(os.path.dirname(df_path), f"Bin_Counts_{ratio_name}.xlsx")
+    count_df.to_excel(output_path, index=False)
+    print(f"✅ Saved: {output_path}")
 
+print("\n✅ All bin count tables saved!")
