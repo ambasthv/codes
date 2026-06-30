@@ -1,7 +1,5 @@
 import os
 
-# Mean Default Rate by Niche Mapped
-
 default_col = 'valid_def_ind_1yr'
 df[default_col] = pd.to_numeric(df[default_col], errors='coerce')
 
@@ -24,13 +22,13 @@ for bin_col in bin_cols:
     ).round(4)
     print(pivot_table)
     
-    # Save to Documents folder (simple path)
-    documents_path = os.path.join(os.path.expanduser("~"), "Documents")
+    # Save to Desktop (simple path)
+    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
     filename = f"Mean_Default_by_{bin_col}.xlsx"
-    output_path = os.path.join(documents_path, filename)
+    output_path = os.path.join(desktop_path, filename)
     
     mean_default.to_excel(output_path, index=False)
     
-    print(f"✅ Saved: {output_path}")
+    print(f"✅ Saved to Desktop: {filename}")
 
-print("\n✅ All files saved to Documents folder!")
+print("\n✅ All files saved to Desktop!")
