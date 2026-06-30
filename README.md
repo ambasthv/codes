@@ -1,23 +1,19 @@
-import os
-import sys
-from pathlib import Path
+I HAVE THESE LIST, CREATE A CODE TO MAP IT WITH BELOW AND THEN GO AHEAD, AND THEN COPY THE NEW DF TO DF
 
-import pandas as pd
-from warnings import simplefilter
-simplefilter(action="ignore", category=Warning)
+SOFTWARE 	SOFTWARE  
+LIFE SCIENCE  	LIFE SCIENCE  
+HARDWARE  	HARDWARE  
+NNO   	OTHER
+ERI   	OTHER
+ENERGY AND RESOURCE INNOVATION    	OTHER
+HEALTHCARE    	OTHER
+None     	OTHER
+RELIGIOUS     	OTHER
+REAL ESTATE     	OTHER
+NON-NICHE      	OTHER
+VENTURE CAPITAL      	OTHER
+PRIVATE BANK      	OTHER
+RELIGIOUS LENDING      	OTHER
+PREMIUM WINE 	OTHER
+PRIVATE EQUITY FUND	OTHER
 
-# Add current folder to path
-sys.path.append(os.getcwd())
-
-# Simple import (since file is in same folder)
-from segmentation_analysis_utils import apply_cleaning, read_cleaning_xlsx, get_ratio_flag_counts, construct_ratio
-
-import datetime
-timestamp = datetime.datetime.now().strftime('%Y%m%d')
-print(timestamp)
-
-# Auto reload for development
-%load_ext autoreload
-%autoreload 2
-
-print("✅ All functions imported successfully!")
