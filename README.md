@@ -24,15 +24,13 @@ for bin_col in bin_cols:
     ).round(4)
     print(pivot_table)
     
-    # Create directory if it doesn't exist
-    output_dir = os.path.dirname(df_path)
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Save to Excel
+    # Save to Documents folder (simple path)
+    documents_path = os.path.join(os.path.expanduser("~"), "Documents")
     filename = f"Mean_Default_by_{bin_col}.xlsx"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(documents_path, filename)
+    
     mean_default.to_excel(output_path, index=False)
     
     print(f"✅ Saved: {output_path}")
 
-print("\n✅ All files saved successfully!")
+print("\n✅ All files saved to Documents folder!")
