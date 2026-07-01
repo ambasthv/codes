@@ -1,14 +1,11 @@
-this is what we are trying to chart,
-tweak the chart code to have the X axis plot by the width of each bin. Apparently we need to plot density and not just count to account for bin width. Basically plot count/width (which normalizes count by bin width)
-update the code, and get somethig like this 
-
 import os
+import re
+import numpy as np
 import matplotlib.pyplot as plt
 
 # Lifestages to exclude
-exclude_lifestages = ['None','Other']
+exclude_lifestages = ['None', 'Other']
 
-# Ratios
 ratio_bins = [
     'Gross Profit/Net Sales_x_100_bin',
     'Net Profit/Net Sales_x_100_bin',
@@ -17,62 +14,109 @@ ratio_bins = [
 
 default_col = 'valid_def_ind_1yr'
 
-# Save charts in the same folder as df_path
 output_folder = os.path.dirname(df_path)
 os.makedirs(output_folder, exist_ok=True)
 
 for bin_col in ratio_bins:
 
     if bin_col not in df.columns:
-        print(f"{bin_col} not found.")
         continue
 
-    # Mean default rate by lifestage and bin
+    #----------------------------------------
+    # Mean default rate
+    #----------------------------------------
     temp = (
         df.groupby(['lifestage_mapped', bin_col], observed=False)[default_col]
           .mean()
           .reset_index()
     )
 
-    # Exclude lifestages if required
-    temp = temp[~temp['lifestage_mapped'].isin(exclude_lifestages)]
+    temp = temp[
+        ~temp['lifestage_mapped'].isin(exclude_lifestages)
+    ]
 
-    # Pivot for plotting
     plot_df = temp.pivot(
         index=bin_col,
         columns='lifestage_mapped',
         values=default_col
     )
 
-    fig, ax1 = plt.subplots(figsize=(16, 7), constrained_layout=True)
+    #----------------------------------------
+    # Count and density
+    #----------------------------------------
+    count_df = (
+        df.groupby(bin_col, observed=False)
+          .size()
+          .reset_index(name="count")
+    )
 
-    # Plot all lifestages except Early Stage/Emerging Tech
+    # Extract lower and upper limits
+    bounds = count_df[bin_col].str.extract(
+        r'([-+]?\d*\.?\d+)\s+to\s+([-+]?\d*\.?\d+)'
+    ).astype(float)
+
+    count_df["low"] = bounds[0]
+    count_df["high"] = bounds[1]
+
+    count_df["width"] = count_df["high"] - count_df["low"]
+    count_df["mid"] = (count_df["low"] + count_df["high"]) / 2
+
+    count_df["density"] = count_df["count"] / count_df["width"]
+
+    # Merge midpoint into plot table
+    plot_df = plot_df.reset_index()
+
+    plot_df = plot_df.merge(
+        count_df[[bin_col, "mid"]],
+        on=bin_col,
+        how="left"
+    )
+
+    plot_df = plot_df.sort_values("mid")
+
+    #----------------------------------------
+    # Plot
+    #----------------------------------------
+
+    fig, ax1 = plt.subplots(figsize=(16,7), constrained_layout=True)
+
+    x = plot_df["mid"]
+
     for ls in plot_df.columns:
-        if ls != 'Early Stage/Emerging Tech':
-            ax1.plot(
-                plot_df.index.astype(str),
-                plot_df[ls],
-                marker='o',
-                markersize=7,
-                linewidth=2.5,
-                label=ls
-            )
 
-    ax1.set_xlabel("Ratio Bin", fontsize=11)
+        if ls in [bin_col, "mid", "Early Stage/Emerging Tech"]:
+            continue
+
+        ax1.plot(
+            x,
+            plot_df[ls],
+            marker='o',
+            linewidth=2.5,
+            markersize=7,
+            label=ls
+        )
+
+    ax1.set_xlabel("Ratio Value", fontsize=11)
     ax1.set_ylabel("Mean Default Rate", fontsize=11)
 
-    plt.setp(ax1.get_xticklabels(), rotation=35, ha='right')
+    ax1.grid(alpha=0.3, linestyle='--')
 
-    ax1.grid(True, linestyle='--', alpha=0.3)
+    # Actual bin labels
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(
+        plot_df[bin_col],
+        rotation=35,
+        ha='right'
+    )
 
     # Secondary axis
-    if 'Early Stage/Emerging Tech' in plot_df.columns:
+    if "Early Stage/Emerging Tech" in plot_df.columns:
 
         ax2 = ax1.twinx()
 
         ax2.plot(
-            plot_df.index.astype(str),
-            plot_df['Early Stage/Emerging Tech'],
+            x,
+            plot_df["Early Stage/Emerging Tech"],
             color='black',
             linestyle='--',
             linewidth=3,
@@ -82,8 +126,7 @@ for bin_col in ratio_bins:
         )
 
         ax2.set_ylabel(
-            "Early Stage/Emerging Tech Mean Default Rate",
-            fontsize=11
+            "Early Stage/Emerging Tech Mean Default Rate"
         )
 
         lines1, labels1 = ax1.get_legend_handles_labels()
@@ -93,20 +136,9 @@ for bin_col in ratio_bins:
             lines1 + lines2,
             labels1 + labels2,
             loc='upper center',
-            bbox_to_anchor=(0.5, 1.09),
-            ncol=len(labels1 + labels2),
-            frameon=False,
-            fontsize=10
-        )
-
-    else:
-
-        ax1.legend(
-            loc='upper center',
-            bbox_to_anchor=(0.5, 1.09),
-            ncol=len(plot_df.columns),
-            frameon=False,
-            fontsize=10
+            bbox_to_anchor=(0.5,1.08),
+            ncol=len(labels1+labels2),
+            frameon=False
         )
 
     plt.title(
@@ -116,10 +148,9 @@ for bin_col in ratio_bins:
         pad=35
     )
 
-    # Save chart
     filename = (
         f"Mean_Default_"
-        f"{bin_col.replace('/', '_').replace(' ', '_').replace('_bin','')}.png"
+        f"{bin_col.replace('/','_').replace(' ','_').replace('_bin','')}.png"
     )
 
     plt.savefig(
