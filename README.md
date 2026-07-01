@@ -1,10 +1,10 @@
 import os
-import re
-import numpy as np
 import matplotlib.pyplot as plt
 
+# Lifestages to exclude
 exclude_lifestages = ['None', 'Other']
 
+# Ratio bin columns
 ratio_bins = [
     'Gross Profit/Net Sales_x_100_bin',
     'Net Profit/Net Sales_x_100_bin',
@@ -13,17 +13,17 @@ ratio_bins = [
 
 default_col = 'valid_def_ind_1yr'
 
+# Output folder
 output_folder = os.path.dirname(df_path)
 os.makedirs(output_folder, exist_ok=True)
 
 for bin_col in ratio_bins:
 
     if bin_col not in df.columns:
+        print(f"{bin_col} not found.")
         continue
 
-    # =====================================================
-    # Mean default rate
-    # =====================================================
+    # ---------------- Mean Default Rate ---------------- #
 
     temp = (
         df.groupby(['lifestage_mapped', bin_col], observed=False)[default_col]
@@ -31,9 +31,7 @@ for bin_col in ratio_bins:
           .reset_index()
     )
 
-    temp = temp[
-        ~temp['lifestage_mapped'].isin(exclude_lifestages)
-    ]
+    temp = temp[~temp['lifestage_mapped'].isin(exclude_lifestages)]
 
     plot_df = temp.pivot(
         index=bin_col,
@@ -41,57 +39,48 @@ for bin_col in ratio_bins:
         values=default_col
     ).reset_index()
 
-    # =====================================================
-    # Count & Density
-    # =====================================================
+    # ---------------- Density ---------------- #
 
-    count_df = (
+    density_df = (
         df.groupby(bin_col, observed=False)
           .size()
           .reset_index(name='Count')
     )
 
-    bounds = count_df[bin_col].str.extract(
+    bounds = density_df[bin_col].str.extract(
         r'([-+]?\d*\.?\d+)\s+to\s+([-+]?\d*\.?\d+)'
     ).astype(float)
 
-    count_df['Low'] = bounds[0]
-    count_df['High'] = bounds[1]
-
-    count_df['Width'] = count_df['High'] - count_df['Low']
-    count_df['Mid'] = (count_df['Low'] + count_df['High']) / 2
-
-    count_df['Density'] = count_df['Count'] / count_df['Width']
+    density_df['Low'] = bounds[0]
+    density_df['High'] = bounds[1]
+    density_df['Width'] = density_df['High'] - density_df['Low']
+    density_df['Density'] = density_df['Count'] / density_df['Width']
 
     plot_df = plot_df.merge(
-        count_df[[bin_col, 'Mid', 'Density']],
-        on=bin_col
+        density_df[[bin_col, 'Density']],
+        on=bin_col,
+        how='left'
     )
 
-    plot_df = plot_df.sort_values('Mid')
+    # X positions (equally spaced)
+    x = range(len(plot_df))
 
-    x = plot_df['Mid']
-
-    # =====================================================
-    # Figure
-    # =====================================================
+    # ---------------- Figure ---------------- #
 
     fig, (ax1, ax3) = plt.subplots(
         2,
         1,
-        figsize=(16,9),
-        gridspec_kw={'height_ratios':[3,1]},
+        figsize=(16, 9),
+        gridspec_kw={'height_ratios': [3, 1]},
         sharex=True,
         constrained_layout=True
     )
 
-    # =====================================================
-    # TOP PANEL
-    # =====================================================
+    # ---------------- Top Chart ---------------- #
 
     for col in plot_df.columns:
 
-        if col in [bin_col, 'Mid', 'Density', 'Early Stage/Emerging Tech']:
+        if col in [bin_col, 'Density', 'Early Stage/Emerging Tech']:
             continue
 
         ax1.plot(
@@ -107,7 +96,6 @@ for bin_col in ratio_bins:
     ax1.grid(True, linestyle='--', alpha=0.3)
 
     # Secondary axis
-
     if 'Early Stage/Emerging Tech' in plot_df.columns:
 
         ax2 = ax1.twinx()
@@ -117,8 +105,8 @@ for bin_col in ratio_bins:
             plot_df['Early Stage/Emerging Tech'],
             color='black',
             linestyle='--',
-            linewidth=3,
             marker='o',
+            linewidth=2.5,
             markersize=7,
             label='Early Stage/Emerging Tech'
         )
@@ -132,35 +120,52 @@ for bin_col in ratio_bins:
             lines1 + lines2,
             labels1 + labels2,
             loc='upper center',
-            bbox_to_anchor=(0.5,1.08),
-            ncol=len(labels1+labels2),
+            bbox_to_anchor=(0.5, 1.06),
+            ncol=3,
+            frameon=False
+        )
+
+    else:
+
+        ax1.legend(
+            loc='upper center',
+            bbox_to_anchor=(0.5, 1.06),
+            ncol=3,
             frameon=False
         )
 
     ax1.set_title(
         f"Mean Default Rate - {bin_col.replace('_bin','')}",
-        fontsize=15,
+        fontsize=14,
         weight='bold',
-        pad=25
+        pad=30
     )
 
-    # =====================================================
-    # BOTTOM PANEL
-    # =====================================================
+    # ---------------- Density Chart ---------------- #
 
-    # Use actual bin widths
-    ax3.bar(
-        plot_df['Mid'],
+    bars = ax3.bar(
+        x,
         plot_df['Density'],
-        width=count_df['Width'] * 0.95,
-        alpha=0.5,
+        width=0.7,
+        color='lightgreen',
         edgecolor='black'
     )
 
+    # Density values on bars
+    for bar, value in zip(bars, plot_df['Density']):
+
+        ax3.text(
+            bar.get_x() + bar.get_width()/2,
+            value,
+            f"{value:.1f}",
+            ha='center',
+            va='bottom',
+            fontsize=9
+        )
+
     ax3.set_ylabel("Density\n(Count / Width)")
     ax3.set_xlabel("Ratio Bin")
-
-    ax3.grid(True, axis='y', alpha=0.3)
+    ax3.grid(axis='y', alpha=0.3)
 
     ax3.set_xticks(x)
     ax3.set_xticklabels(
@@ -169,9 +174,11 @@ for bin_col in ratio_bins:
         ha='right'
     )
 
-    # =====================================================
-    # Save
-    # =====================================================
+    # Hide top x-axis labels
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([])
+
+    # ---------------- Save ---------------- #
 
     filename = (
         f"MeanDefault_Density_"
