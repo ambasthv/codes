@@ -12,21 +12,30 @@ for col in ratio_cols:
         print(f"{col} not found.")
         continue
 
+    # Get bin edges
     bins = pd.qcut(df[col], q=5, retbins=True, duplicates="drop")[1]
 
-    labels = []
-    for i in range(len(bins)-1):
-        labels.append(f"{bins[i]:.2f} to {bins[i+1]:.2f}")
+    # Create labels
+    labels = [
+        f"{bins[i]:.2f} to {bins[i+1]:.2f}"
+        for i in range(len(bins)-1)
+    ]
 
-    df[col + "_bin"] = pd.qcut(
+    # Create bins
+    bin_col = col + "_bin"
+
+    df[bin_col] = pd.qcut(
         df[col],
         q=5,
         labels=labels,
         duplicates="drop"
     )
 
-    df[col + "_bin"] = df[col + "_bin"].astype("object")
-    df.loc[df[col].isna(), col + "_bin"] = "Missing"
+    # Add Missing category only if required
+    if df[col].isna().any():
+        df[bin_col] = df[bin_col].cat.add_categories("Missing")
+        df.loc[df[col].isna(), bin_col] = "Missing"
 
     print(f"\n{col}")
-    print(df[col + "_bin"].value_counts(dropna=False))
+    print(df[bin_col].value_counts(sort=False, dropna=False))
+    print("-" * 50)
