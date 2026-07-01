@@ -1,48 +1,35 @@
-import os
-import re
+getting error while running this code
 
-print("=== Count per Bin per Niche ===\n")
+master_db = construct_ratio(master_db)
+---------------------------------------------------------------------------
+KeyError                                  Traceback (most recent call last)
+File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\pandas\core\indexes\base.py:3805, in Index.get_loc(self, key)
+   3804 try:
+-> 3805     return self._engine.get_loc(casted_key)
+   3806 except KeyError as err:
 
-bin_cols = [
-    'Gross Profit/Net Sales_x_100_bin',
-    'Net Profit/Net Sales_x_100_bin',
-    'Net Sales/Total Assets_bin'
-]
+File index.pyx:167, in pandas._libs.index.IndexEngine.get_loc()
 
-for bin_col in bin_cols:
+File index.pyx:196, in pandas._libs.index.IndexEngine.get_loc()
 
-    if bin_col not in df.columns:
-        continue
+File pandas\\_libs\\hashtable_class_helper.pxi:7081, in pandas._libs.hashtable.PyObjectHashTable.get_item()
 
-    count_df = (
-        df.groupby([bin_col, 'niche_mapped'])
-          .size()
-          .unstack(fill_value=0)
-          .reset_index()
-    )
+File pandas\\_libs\\hashtable_class_helper.pxi:7089, in pandas._libs.hashtable.PyObjectHashTable.get_item()
 
-    count_df.rename(columns={bin_col: 'Bin'}, inplace=True)
+KeyError: 'acctsrecother'
 
-    ratio_name = bin_col.replace('_winsor_bin', '')
+The above exception was the direct cause of the following exception:
 
-    count_df.insert(0, 'Ratio', ratio_name)
+KeyError                                  Traceback (most recent call last)
+Cell In[6], line 1
+----> 1 master_db = construct_ratio(master_db)
 
-    print(f"\n{ratio_name} - Counts per Bin:")
-    print(count_df)
+File c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\01. Code\model_development\segmentation_analysis\code\segmentation_analysis_utils.py:9, in construct_ratio(df)
+      7     df['(EBITDA-Capex)/(Interest Expense+CPLTD)'] = (df['ebitda'] - df['capex']) / (df['interest_expense'] + df['cpltd'])
+...
+   3815     #  InvalidIndexError. Otherwise we fall through and re-raise
+   3816     #  the TypeError.
+   3817     self._check_indexing_error(key)
 
-    output_dir = os.path.dirname(df_path)
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Make filename Windows-safe
-    safe_ratio_name = re.sub(r'[<>:"/\\|?*]', '_', ratio_name)
-
-    output_path = os.path.join(
-        output_dir,
-        f"Bin_Counts_{safe_ratio_name}.xlsx"
-    )
-
-    count_df.to_excel(output_path, index=False)
-
-    print(f"✅ Saved: {output_path}")
-
-print("\n✅ All bin count tables saved successfully!")
+KeyError: 'acctsrecother'
+Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
