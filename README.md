@@ -1,9 +1,12 @@
+this is what we are trying to chart,
+tweak the chart code to have the X axis plot by the width of each bin. Apparently we need to plot density and not just count to account for bin width. Basically plot count/width (which normalizes count by bin width)
+update the code, and get somethig like this 
 
 import os
 import matplotlib.pyplot as plt
 
 # Lifestages to exclude
-exclude_lifestages = []
+exclude_lifestages = ['None','Other']
 
 # Ratios
 ratio_bins = [
@@ -90,7 +93,7 @@ for bin_col in ratio_bins:
             lines1 + lines2,
             labels1 + labels2,
             loc='upper center',
-            bbox_to_anchor=(0.5, 1.03),
+            bbox_to_anchor=(0.5, 1.09),
             ncol=len(labels1 + labels2),
             frameon=False,
             fontsize=10
@@ -100,7 +103,7 @@ for bin_col in ratio_bins:
 
         ax1.legend(
             loc='upper center',
-            bbox_to_anchor=(0.5, 1.03),
+            bbox_to_anchor=(0.5, 1.09),
             ncol=len(plot_df.columns),
             frameon=False,
             fontsize=10
@@ -110,7 +113,7 @@ for bin_col in ratio_bins:
         f"Mean Default Rate by {bin_col.replace('_bin','')}",
         fontsize=14,
         weight='bold',
-        pad=40
+        pad=35
     )
 
     # Save chart
@@ -125,7 +128,7 @@ for bin_col in ratio_bins:
         bbox_inches='tight'
     )
 
-    print(f"✅ Saved: {filename}")
+    print(f"Saved: {filename}")
 
     plt.show()
     plt.close()
