@@ -1,41 +1,36 @@
-print("=== Creating 5 Equal-Frequency Bins ===\n")
+i want to create mean default value by using this col "valid_def_ind_1yr".
+code i am trying is below , but it gives an error, KeyError: 'niche_mapped'
 
-ratio_cols = [
-    'Gross Profit/Net Sales_x_100',
-    'Net Profit/Net Sales_x_100',
-    'Net Sales/Total Assets'
-]
+correct the code and provide the mean defualt rate by using valid_def_ind_1yr for these three ratios
 
-for col in ratio_cols:
+import os
 
-    if col not in df.columns:
-        print(f"{col} not found.")
+default_col = 'valid_def_ind_1yr'
+df[default_col] = pd.to_numeric(df[default_col], errors='coerce')
+
+bin_cols = ['Gross Profit/Net Sales_x_100_bin', 
+            'Net Profit/Net Sales_x_100_bin', 
+            'Net Sales/Total Assets_bin']
+
+for bin_col in bin_cols:
+    if bin_col not in df.columns:
         continue
-
-    # Get bin edges
-    bins = pd.qcut(df[col], q=5, retbins=True, duplicates="drop")[1]
-
-    # Create labels
-    labels = [
-        f"{bins[i]:.2f} to {bins[i+1]:.2f}"
-        for i in range(len(bins)-1)
-    ]
-
-    # Create bins
-    bin_col = col + "_bin"
-
-    df[bin_col] = pd.qcut(
-        df[col],
-        q=5,
-        labels=labels,
-        duplicates="drop"
-    )
-
-    # Add Missing category only if required
-    if df[col].isna().any():
-        df[bin_col] = df[bin_col].cat.add_categories("Missing")
-        df.loc[df[col].isna(), bin_col] = "Missing"
-
-    print(f"\n{col}")
-    print(df[bin_col].value_counts(sort=False, dropna=False))
-    print("-" * 50)
+      
+    mean_default = df.groupby(['niche_mapped', bin_col])[default_col].mean().reset_index()
+    mean_default = mean_default.rename(columns={default_col: 'mean_default_rate'})
+    
+    print(f"\nMean Default Rate by Niche & {bin_col}:")
+    pivot_table = mean_default.pivot(
+        index='niche_mapped', 
+        columns=bin_col, 
+        values='mean_default_rate'
+    ).round(4)
+    print(pivot_table)
+    
+    # Save to Desktop (simple path)
+    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+    filename = f"Mean_Default_by_{bin_col}.xlsx"
+    output_path = os.path.join(desktop_path, filename)
+    
+    #mean_default.to_excel(output_path, index=False)
+    
