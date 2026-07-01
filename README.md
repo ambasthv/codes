@@ -1,35 +1,23 @@
-getting error while running this code
+so, belos is the code from .py, where def construct_ratios(df) is being calulcated. this acctsrecother is surely not available as checked, i dont want any changes in this code as it was given by sme. 
 
-master_db = construct_ratio(master_db)
----------------------------------------------------------------------------
-KeyError                                  Traceback (most recent call last)
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\pandas\core\indexes\base.py:3805, in Index.get_loc(self, key)
-   3804 try:
--> 3805     return self._engine.get_loc(casted_key)
-   3806 except KeyError as err:
+but you update the this code (master_db = construct_ratio(master_db)) in such a way that if the column is not found it will still run passing that, but it should tell in print msg that which ratio/coulmn is not found.
 
-File index.pyx:167, in pandas._libs.index.IndexEngine.get_loc()
+def construct_ratio(df):
+    
+    df['capex'] = 0
+    df['(EBITDA-Capex)/(Interest Expense+CPLTD)'] = (df['ebitda'] - df['capex']) / (df['interest_expense'] + df['cpltd'])
+    df['Total Debt/Equity'] = df['total_debt']/df['total_net_worth']
+    df["(Cash+Marketable Securities+Net Accts Receivable Trade+Acct Receivable Other)/Current Liabilities"] = (df['cash'] + df['market_securities'] + df['acctsrecother'] + df['net_accounts_receivable']) / df['current_liabilities']
+    df["Quick Ratio*(Current Liabilities/(Current Liabilities-Deferred Revenue))"] = df["Quick Ratio"] * (df['current_liabilities']/(df['current_liabilities'] - df['deferred_revenue']))
+#OPERATING PERFORMANCE
+    df['Gross Profit/Net Sales_x_100'] = (df['gross_profit'] / df['net_sales']) * 100
+    df['Net Profit/Net Sales_x_100'] = (df['net_profit'] / df['net_sales']) * 100
+    df['Net Sales/Total Assets'] = (df['net_sales'] / df['total_assets'])
+#----
+    df['Cash and Equivalents/Total Debt'] = (df['cash_and_equivalents'] / df['total_debt'])
+    df['Quick_Ratio'] = (df['cash'] + df['market_securities'] + df['net_accounts_receivable'] + df['acctsrecother']) / \
+                    df['current_liabilities']
+    df['Adj Quick Ratio'] = (df['Quick_Ratio'] * df['current_liabilities']) / (
+        df['current_liabilities'] - df['deferred_revenue'])
 
-File index.pyx:196, in pandas._libs.index.IndexEngine.get_loc()
-
-File pandas\\_libs\\hashtable_class_helper.pxi:7081, in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-File pandas\\_libs\\hashtable_class_helper.pxi:7089, in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-KeyError: 'acctsrecother'
-
-The above exception was the direct cause of the following exception:
-
-KeyError                                  Traceback (most recent call last)
-Cell In[6], line 1
-----> 1 master_db = construct_ratio(master_db)
-
-File c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\01. Code\model_development\segmentation_analysis\code\segmentation_analysis_utils.py:9, in construct_ratio(df)
-      7     df['(EBITDA-Capex)/(Interest Expense+CPLTD)'] = (df['ebitda'] - df['capex']) / (df['interest_expense'] + df['cpltd'])
-...
-   3815     #  InvalidIndexError. Otherwise we fall through and re-raise
-   3816     #  the TypeError.
-   3817     self._check_indexing_error(key)
-
-KeyError: 'acctsrecother'
-Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
+    return df
