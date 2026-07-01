@@ -1,5 +1,3 @@
-lets use this code, but write the value of density, so we know which bins width with its value. 
-
 import os
 import re
 import numpy as np
@@ -62,18 +60,48 @@ for bin_col in ratio_bins:
 
     count_df['Width'] = count_df['High'] - count_df['Low']
     count_df['Mid'] = (count_df['Low'] + count_df['High']) / 2
-
     count_df['Density'] = count_df['Count'] / count_df['Width']
 
+    # -------------------------
+    # Print Density Table
+    # -------------------------
+
+    print("\n" + "="*80)
+    print(f"Density Table - {bin_col.replace('_bin','')}")
+    print("="*80)
+
+    density_table = count_df[['Low','High','Width','Count','Density']].copy()
+
+    density_table = density_table.round({
+        'Low':2,
+        'High':2,
+        'Width':2,
+        'Density':2
+    })
+
+    print(density_table.to_string(index=False))
+
+    density_file = os.path.join(
+        output_folder,
+        f"Density_Table_{bin_col.replace('/','_').replace(' ','_').replace('_bin','')}.xlsx"
+    )
+
+    density_table.to_excel(density_file, index=False)
+
+    print(f"Density table saved: {density_file}")
+
+    # -------------------------
+    # Merge for plotting
+    # -------------------------
+
     plot_df = plot_df.merge(
-        count_df[[bin_col, 'Mid', 'Density']],
+        count_df[[bin_col,'Mid','Width','Density']],
         on=bin_col
     )
 
     plot_df = plot_df.sort_values('Mid')
 
     x = plot_df['Mid']
-    
 
     # =====================================================
     # Figure
@@ -94,7 +122,7 @@ for bin_col in ratio_bins:
 
     for col in plot_df.columns:
 
-        if col in [bin_col, 'Mid', 'Density', 'Early Stage/Emerging Tech']:
+        if col in [bin_col,'Mid','Width','Density','Early Stage/Emerging Tech']:
             continue
 
         ax1.plot(
@@ -109,7 +137,7 @@ for bin_col in ratio_bins:
     ax1.set_ylabel("Mean Default Rate")
     ax1.grid(True, linestyle='--', alpha=0.3)
 
-    # Secondary axis
+    # Secondary Axis
 
     if 'Early Stage/Emerging Tech' in plot_df.columns:
 
@@ -151,14 +179,27 @@ for bin_col in ratio_bins:
     # BOTTOM PANEL
     # =====================================================
 
-    # Use actual bin widths
-    ax3.bar(
+    bars = ax3.bar(
         plot_df['Mid'],
         plot_df['Density'],
-        width=count_df['Width'] * 0.95,
+        width=plot_df['Width'] * 0.95,
         alpha=0.5,
         edgecolor='black'
     )
+
+    # Write Width & Density on each bar
+
+    for i, bar in enumerate(bars):
+
+        ax3.text(
+            bar.get_x() + bar.get_width()/2,
+            bar.get_height(),
+            f"W={plot_df.iloc[i]['Width']:.2f}\nD={plot_df.iloc[i]['Density']:.2f}",
+            ha='center',
+            va='bottom',
+            fontsize=8,
+            fontweight='bold'
+        )
 
     ax3.set_ylabel("Density\n(Count / Width)")
     ax3.set_xlabel("Ratio Bin")
@@ -166,6 +207,7 @@ for bin_col in ratio_bins:
     ax3.grid(True, axis='y', alpha=0.3)
 
     ax3.set_xticks(x)
+
     ax3.set_xticklabels(
         plot_df[bin_col],
         rotation=35,
