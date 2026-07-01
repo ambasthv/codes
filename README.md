@@ -1,69 +1,39 @@
-import os
-import re
-import matplotlib.pyplot as plt
-import seaborn as sns
+BELOW CODE IS GIVEN ME ERORR, ERROR IS = unsupported operand type(s) for -: 'str' and 'str'
+CODE IS
+print("=== 5-BIN CREATION WITH EQUAL COUNT (Entire Data) ===\n")
 
-# Lifestages to exclude
-exclude_lifestages = []
+winsor_cols = ['Gross Profit/Net Sales_x_100', 
+               'Net Profit/Net Sales_x_100', 
+               'Net Sales/Total Assets']
 
-# Ratio columns
-ratio_cols = [
-    'Gross Profit/Net Sales_x_100',
-    'Net Profit/Net Sales_x_100',
-    'Net Sales/Total Assets'
-]
-
-colors = plt.cm.tab10.colors
-
-for col in ratio_cols:
-
+for col in winsor_cols:
     if col not in df.columns:
-        print(f"⚠️ Column not found: {col}")
         continue
-
-    lifestages = [
-        ls for ls in df['lifestage_mapped'].unique()
-        if ls not in exclude_lifestages
-    ]
-
-    n = len(lifestages)
-    cols_grid = 4
-    rows = (n + cols_grid - 1) // cols_grid
-
-    fig, axes = plt.subplots(rows, cols_grid, figsize=(16, 4 * rows))
-    axes = axes.ravel()
-
-    for i, ls in enumerate(lifestages):
-        subset = df[df['lifestage_mapped'] == ls]
-        color = colors[i % len(colors)]
-
-        sns.boxplot(
-            y=subset[col],
-            ax=axes[i],
-            color=color
+        
+    bin_col = f"{col}_bin"
+    df[bin_col] = pd.NA
+    
+    # Missing values
+    df.loc[df[col].isna(), bin_col] = 'Missing'
+    
+    # All values (positive + negative) → 5 equal count bins
+    valid = df[col].dropna()
+    if len(valid) > 0:
+        bin_labels = pd.qcut(valid, q=5, duplicates='drop', retbins=True)[1]
+        
+        ranges = []
+        for i in range(len(bin_labels)-1):
+            low = bin_labels[i]
+            high = bin_labels[i+1]
+            ranges.append(f"{low:.4f} - {high:.4f}")
+        
+        df[bin_col] = pd.qcut(
+            df[col], 
+            q=5, 
+            labels=ranges,
+            duplicates='drop'
         )
-
-        axes[i].set_title(ls)
-        axes[i].set_ylabel(col)
-
-    # Hide unused plots
-    for j in range(n, len(axes)):
-        axes[j].set_visible(False)
-
-    plt.suptitle(f"Box Plots of {col} by Lifestage", fontsize=16)
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-
-    # Make filename Windows-safe
-    safe_col = re.sub(r'[<>:"/\\|?*]', '_', col)
-
-    filename = f"BoxPlot_{safe_col}.png"
-    save_path = os.path.join(os.path.dirname(df_path), filename)
-
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-
-    print(f"✅ Saved: {save_path}")
-
-    plt.show()
-    plt.close(fig)
-
-print("\n✅ All box plots saved successfully!")
+    
+    print(f"\n{col}")
+    print(df[bin_col].value_counts().sort_index())
+    print("---")
