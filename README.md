@@ -1,56 +1,59 @@
-anaconda cmd putput
+VS Cdoe terminal output
 
+C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\.venv\Scripts\python.exe
+(.venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251> python --version
+Python 3.14.6
+(.venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251> python -c "import sys; print(sys.executable)"
+C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\.venv\Scripts\python.exe
+(.venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251> pip show pandas
+Name: pandas
+Version: 3.0.3
+Summary: Powerful data structures for data analysis, time series, and statistics
+Home-page: https://pandas.pydata.org
+Author: 
+Author-email: The Pandas Development Team <pandas-dev@python.org>
+License: BSD 3-Clause License
 
-(base) C:\Windows\System32>where conda
-C:\Program Files\Anaconda3_2024_10_1\Library\bin\conda.bat
-C:\Program Files\Anaconda3_2024_10_1\Scripts\conda.exe
-C:\Program Files\Anaconda3_2024_10_1\condabin\conda.bat
+ Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team
+ All rights reserved.
 
-(base) C:\Windows\System32>where pyhton
-INFO: Could not find files for the given pattern(s).
+ Copyright (c) 2011-2026, Open source contributors.
 
-(base) C:\Windows\System32>where pyhton
-INFO: Could not find files for the given pattern(s).
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
 
-(base) C:\Windows\System32>where python
-C:\Program Files\Anaconda3_2024_10_1\python.exe
-C:\Users\YWA95\AppData\Local\Microsoft\WindowsApps\python.exe
+ * Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
 
-(base) C:\Windows\System32>conda info
+ * Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
 
-     active environment : base
-    active env location : C:\Program Files\Anaconda3_2024_10_1
-            shell level : 1
-       user config file : C:\Users\YWA95\.condarc
- populated config files : C:\Program Files\Anaconda3_2024_10_1\.condarc
-          conda version : 24.9.2
-    conda-build version : 24.9.0
-         python version : 3.12.7.final.0
-                 solver : libmamba (default)
-       virtual packages : __archspec=1=skylake
-                          __conda=24.9.2=0
-                          __win=0=0
-       base environment : C:\Program Files\Anaconda3_2024_10_1  (read only)
-      conda av data dir : C:\Program Files\Anaconda3_2024_10_1\etc\conda
-  conda av metadata url : None
-           channel URLs : https://repo.anaconda.com/pkgs/main/win-64
-                          https://repo.anaconda.com/pkgs/main/noarch
-                          https://repo.anaconda.com/pkgs/r/win-64
-                          https://repo.anaconda.com/pkgs/r/noarch
-                          https://repo.anaconda.com/pkgs/msys2/win-64
-                          https://repo.anaconda.com/pkgs/msys2/noarch
-          package cache : C:\Program Files\Anaconda3_2024_10_1\pkgs
-                          C:\Users\YWA95\.conda\pkgs
-                          C:\Users\YWA95\AppData\Local\conda\conda\pkgs
-       envs directories : C:\Users\YWA95\.conda\envs
-                          C:\Program Files\Anaconda3_2024_10_1\envs
-                          C:\Users\YWA95\AppData\Local\conda\conda\envs
-               platform : win-64
-             user-agent : conda/24.9.2 requests/2.32.3 CPython/3.12.7 Windows/11 Windows/10.0.26200 solver/libmamba conda-libmamba-solver/24.9.0 libmambapy/1.5.8 aau/0.4.4 c/. s/.
-          administrator : False
-             netrc file : None
-           offline mode : False
+ * Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
 
- VS CODE OUTPUT
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
- C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\.venv\Scripts\python.exe
+Location: c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\.venv\Lib\site-packages
+Requires: numpy, python-dateutil, tzdata
+Required-by: mlxtend
+(.venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251> pip show numpy
+Name: numpy
+Version: 2.5.0
+Summary: Fundamental package for array computing in Python
+Home-page: https://numpy.org
+Author: Travis E. Oliphant et al.
+Author-email: 
+License-Expression: BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
+Location: c:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\.venv\Lib\site-packages
+Requires: 
