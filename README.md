@@ -1,140 +1,389 @@
-ERROR IGOT FROM FIRS TONE 
-
----------------------------------------------------------------------------
-ImportError                               Traceback (most recent call last)
-File ~\AppData\Roaming\Python\Python312\site-packages\numpy\core\_multiarray_umath.py:46, in __getattr__(attr_name)
-     41     # Also print the message (with traceback).  This is because old versions
-     42     # of NumPy unfortunately set up the import to replace (and hide) the
-     43     # error.  The traceback shouldn't be needed, but e.g. pytest plugins
-     44     # seem to swallow it and we should be failing anyway...
-     45     sys.stderr.write(msg + tb_msg)
----> 46     raise ImportError(msg)
-     48 ret = getattr(_multiarray_umath, attr_name, None)
-     49 if ret is None:
-
-ImportError: 
-A module that was compiled using NumPy 1.x cannot be run in
-NumPy 2.5.1 as it may crash. To support both 1.x and 2.x
-versions of NumPy, modules must be compiled with NumPy 2.0.
-Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
-
-If you are a user of the module, the easiest solution will be to
-downgrade to 'numpy<2' or try to upgrade the affected module.
-We expect that some modules will need time to support NumPy 2.
+here is the output form cmd
 
 
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-AttributeError: _ARRAY_API not found
+(base) C:\Windows\System32>pip show numpy
+Name: numpy
+Version: 2.5.1
+Summary: Fundamental package for array computing in Python
+Home-page: https://numpy.org
+Author: Travis E. Oliphant et al.
+Author-email:
+License:
+Location: C:\Users\YWA95\AppData\Roaming\Python\Python312\site-packages
+Requires:
+Required-by: altair, astropy, bokeh, Bottleneck, contourpy, datashader, gensim, h5py, holoviews, hvplot, imagecodecs, imageio, imbalanced-learn, matplotlib, mkl_fft, mkl_random, mlxtend, numba, numexpr, pandas, patsy, pyarrow, pydeck, pyerfa, PyWavelets, scikit-image, scikit-learn, scipy, seaborn, statsmodels, streamlit, tables, tifffile, xarray
 
----------------------------------------------------------------------------
-ImportError                               Traceback (most recent call last)
-File ~\AppData\Roaming\Python\Python312\site-packages\numpy\core\_multiarray_umath.py:46, in __getattr__(attr_name)
-     41     # Also print the message (with traceback).  This is because old versions
-     42     # of NumPy unfortunately set up the import to replace (and hide) the
-     43     # error.  The traceback shouldn't be needed, but e.g. pytest plugins
-     44     # seem to swallow it and we should be failing anyway...
-     45     sys.stderr.write(msg + tb_msg)
----> 46     raise ImportError(msg)
-     48 ret = getattr(_multiarray_umath, attr_name, None)
-     49 if ret is None:
+(base) C:\Windows\System32>pip list numpy
+Package                           Version
+--------------------------------- ------------------
+aiobotocore                       2.12.3
+aiohappyeyeballs                  2.4.0
+aiohttp                           3.10.5
+aioitertools                      0.7.1
+aiosignal                         1.2.0
+alabaster                         0.7.16
+altair                            5.0.1
+anaconda-anon-usage               0.4.4
+anaconda-catalogs                 0.2.0
+anaconda-client                   1.12.3
+anaconda-cloud-auth               0.5.1
+anaconda-navigator                2.6.3
+anaconda-project                  0.11.1
+annotated-types                   0.6.0
+anyio                             4.2.0
+appdirs                           1.4.4
+archspec                          0.2.3
+argon2-cffi                       21.3.0
+argon2-cffi-bindings              21.2.0
+arrow                             1.2.3
+astroid                           2.14.2
+astropy                           6.1.3
+astropy-iers-data                 0.2024.9.2.0.33.23
+asttokens                         2.0.5
+async-lru                         2.0.4
+atomicwrites                      1.4.0
+attrs                             23.1.0
+Automat                           20.2.0
+autopep8                          2.0.4
+Babel                             2.11.0
+bcrypt                            3.2.0
+beautifulsoup4                    4.12.3
+binaryornot                       0.4.4
+black                             24.8.0
+bleach                            4.1.0
+blinker                           1.6.2
+bokeh                             3.6.0
+boltons                           23.0.0
+botocore                          1.34.69
+Bottleneck                        1.3.7
+Brotli                            1.0.9
+cachetools                        5.3.3
+certifi                           2024.8.30
+cffi                              1.17.1
+chardet                           4.0.0
+charset-normalizer                3.3.2
+click                             8.1.7
+cloudpickle                       3.0.0
+colorama                          0.4.6
+colorcet                          3.1.0
+comm                              0.2.1
+conda                             24.9.2
+conda-build                       24.9.0
+conda-content-trust               0.2.0
+conda_index                       0.5.0
+conda-libmamba-solver             24.9.0
+conda-pack                        0.7.1
+conda-package-handling            2.3.0
+conda_package_streaming           0.10.0
+conda-repo-cli                    1.0.114
+conda-token                       0.5.0+1.g2209e04
+constantly                        23.10.4
+contourpy                         1.3.3
+cookiecutter                      2.6.0
+cryptography                      43.0.0
+cssselect                         1.2.0
+cycler                            0.11.0
+cytoolz                           0.12.2
+dask                              2024.8.2
+dask-expr                         1.1.13
+datashader                        0.16.3
+debugpy                           1.6.7
+decorator                         5.1.1
+defusedxml                        0.7.1
+diff-match-patch                  20200713
+dill                              0.3.8
+distributed                       2024.8.2
+distro                            1.9.0
+docstring-to-markdown             0.11
+docutils                          0.18.1
+et-xmlfile                        1.1.0
+executing                         0.8.3
+fastjsonschema                    2.16.2
+filelock                          3.13.1
+flake8                            7.0.0
+Flask                             3.0.3
+fonttools                         4.51.0
+frozendict                        2.4.2
+frozenlist                        1.4.0
+fsspec                            2024.6.1
+gensim                            4.3.3
+gitdb                             4.0.7
+GitPython                         3.1.43
+greenlet                          3.0.1
+h11                               0.14.0
+h5py                              3.11.0
+HeapDict                          1.0.1
+holoviews                         1.19.1
+httpcore                          1.0.2
+httpx                             0.27.0
+hvplot                            0.11.0
+hyperlink                         21.0.0
+idna                              3.7
+imagecodecs                       2023.1.23
+imageio                           2.33.1
+imagesize                         1.4.1
+imbalanced-learn                  0.12.3
+importlib-metadata                7.0.1
+incremental                       22.10.0
+inflection                        0.5.1
+iniconfig                         1.1.1
+intake                            2.0.7
+intervaltree                      3.1.0
+ipykernel                         6.28.0
+ipython                           8.27.0
+ipython-genutils                  0.2.0
+ipywidgets                        7.8.1
+isort                             5.13.2
+itemadapter                       0.3.0
+itemloaders                       1.1.0
+itsdangerous                      2.2.0
+jaraco.classes                    3.2.1
+jedi                              0.19.1
+jellyfish                         1.0.1
+Jinja2                            3.1.4
+jmespath                          1.0.1
+joblib                            1.5.3
+json5                             0.9.6
+jsonpatch                         1.33
+jsonpointer                       2.1
+jsonschema                        4.23.0
+jsonschema-specifications         2023.7.1
+jupyter                           1.0.0
+jupyter_client                    8.6.0
+jupyter-console                   6.6.3
+jupyter_core                      5.7.2
+jupyter-events                    0.10.0
+jupyter-lsp                       2.2.0
+jupyter_server                    2.14.1
+jupyter_server_terminals          0.4.4
+jupyterlab                        4.2.5
+jupyterlab-pygments               0.1.2
+jupyterlab_server                 2.27.3
+jupyterlab-widgets                1.0.0
+keyring                           24.3.1
+kiwisolver                        1.4.4
+lazy_loader                       0.4
+lazy-object-proxy                 1.10.0
+lckr_jupyterlab_variableinspector 3.1.0
+libarchive-c                      5.1
+libmambapy                        1.5.8
+linkify-it-py                     2.0.0
+llvmlite                          0.43.0
+lmdb                              1.4.1
+locket                            1.0.0
+lxml                              5.2.1
+lz4                               4.3.2
+Markdown                          3.4.1
+markdown-it-py                    2.2.0
+MarkupSafe                        2.1.3
+matplotlib                        3.11.0
+matplotlib-inline                 0.1.6
+mccabe                            0.7.0
+mdit-py-plugins                   0.3.0
+mdurl                             0.1.0
+menuinst                          2.1.2
+mistune                           2.0.4
+mkl_fft                           1.3.10
+mkl_random                        1.2.7
+mkl-service                       2.4.0
+mlxtend                           0.25.0
+more-itertools                    10.3.0
+mpmath                            1.3.0
+msgpack                           1.0.3
+multidict                         6.0.4
+multipledispatch                  0.6.0
+mypy                              1.11.2
+mypy-extensions                   1.0.0
+narwhals                          2.23.0
+navigator-updater                 0.5.1
+nbclient                          0.8.0
+nbconvert                         7.16.4
+nbformat                          5.10.4
+nest-asyncio                      1.6.0
+networkx                          3.3
+nltk                              3.9.1
+notebook                          7.2.2
+notebook_shim                     0.2.3
+numba                             0.60.0
+numexpr                           2.8.7
+numpy                             2.5.1
+numpydoc                          1.7.0
+openpyxl                          3.1.5
+overrides                         7.4.0
+packaging                         24.1
+pandas                            3.0.3
+pandocfilters                     1.5.0
+panel                             1.5.2
+param                             2.1.1
+paramiko                          2.8.1
+parsel                            1.8.1
+parso                             0.8.3
+partd                             1.4.1
+pathspec                          0.10.3
+patsy                             0.5.6
+pexpect                           4.8.0
+pickleshare                       0.7.5
+pillow                            10.4.0
+pip                               24.2
+pkce                              1.0.3
+pkginfo                           1.10.0
+platformdirs                      3.10.0
+plotly                            5.24.1
+pluggy                            1.0.0
+ply                               3.11
+prometheus-client                 0.14.1
+prompt-toolkit                    3.0.43
+Protego                           0.1.16
+protobuf                          4.25.3
+psutil                            5.9.0
+ptyprocess                        0.7.0
+pure-eval                         0.2.2
+py-cpuinfo                        9.0.0
+pyarrow                           16.1.0
+pyasn1                            0.4.8
+pyasn1-modules                    0.2.8
+pycodestyle                       2.11.1
+pycosat                           0.6.6
+pycparser                         2.21
+pyct                              0.5.0
+pycurl                            7.45.3
+pydantic                          2.8.2
+pydantic_core                     2.20.1
+pydeck                            0.8.0
+PyDispatcher                      2.0.5
+pydocstyle                        6.3.0
+pyerfa                            2.0.1.4
+pyflakes                          3.2.0
+Pygments                          2.15.1
+PyJWT                             2.8.0
+pylint                            2.16.2
+pylint-venv                       3.0.3
+pyls-spyder                       0.4.0
+PyNaCl                            1.5.0
+pyodbc                            5.1.0
+pyOpenSSL                         24.2.1
+pyparsing                         3.1.2
+PyQt5                             5.15.10
+PyQt5-sip                         12.13.0
+PyQtWebEngine                     5.15.6
+PySocks                           1.7.1
+pytest                            7.4.4
+python-dateutil                   2.9.0.post0
+python-dotenv                     0.21.0
+python-json-logger                2.0.7
+python-lsp-black                  2.0.0
+python-lsp-jsonrpc                1.1.2
+python-lsp-server                 1.10.0
+python-slugify                    5.0.2
+pytoolconfig                      1.2.6
+pytz                              2024.1
+pyviz_comms                       3.0.2
+PyWavelets                        1.7.0
+pywin32                           305.1
+pywin32-ctypes                    0.2.2
+pywinpty                          2.0.10
+PyYAML                            6.0.1
+pyzmq                             25.1.2
+QDarkStyle                        3.2.3
+qstylizer                         0.2.2
+QtAwesome                         1.3.1
+qtconsole                         5.5.1
+QtPy                              2.4.1
+queuelib                          1.6.2
+referencing                       0.30.2
+regex                             2024.9.11
+requests                          2.32.3
+requests-file                     1.5.1
+requests-toolbelt                 1.0.0
+rfc3339-validator                 0.1.4
+rfc3986-validator                 0.1.1
+rich                              13.7.1
+rope                              1.12.0
+rpds-py                           0.10.6
+Rtree                             1.0.1
+ruamel.yaml                       0.18.6
+ruamel.yaml.clib                  0.2.8
+ruamel-yaml-conda                 0.17.21
+s3fs                              2024.6.1
+scikit-image                      0.24.0
+scikit-learn                      1.9.0
+scipy                             1.13.1
+Scrapy                            2.11.1
+seaborn                           0.13.2
+semver                            3.0.2
+Send2Trash                        1.8.2
+service-identity                  18.1.0
+setuptools                        75.1.0
+sip                               6.7.12
+six                               1.16.0
+smart-open                        5.2.1
+smmap                             4.0.0
+sniffio                           1.3.0
+snowballstemmer                   2.2.0
+sortedcontainers                  2.4.0
+soupsieve                         2.5
+Sphinx                            7.3.7
+sphinxcontrib-applehelp           1.0.2
+sphinxcontrib-devhelp             1.0.2
+sphinxcontrib-htmlhelp            2.0.0
+sphinxcontrib-jsmath              1.0.1
+sphinxcontrib-qthelp              1.0.3
+sphinxcontrib-serializinghtml     1.1.10
+spyder                            5.5.1
+spyder-kernels                    2.5.0
+SQLAlchemy                        2.0.34
+stack-data                        0.2.0
+statsmodels                       0.14.2
+streamlit                         1.37.1
+sympy                             1.13.2
+tables                            3.10.1
+tabulate                          0.9.0
+tblib                             1.7.0
+tenacity                          8.2.3
+terminado                         0.17.1
+text-unidecode                    1.3
+textdistance                      4.2.1
+threadpoolctl                     3.5.0
+three-merge                       0.1.1
+tifffile                          2023.4.12
+tinycss2                          1.2.1
+tldextract                        5.1.2
+toml                              0.10.2
+tomli                             2.0.1
+tomlkit                           0.11.1
+toolz                             0.12.0
+tornado                           6.4.1
+tqdm                              4.66.5
+traitlets                         5.14.3
+truststore                        0.8.0
+Twisted                           23.10.0
+twisted-iocpsupport               1.0.2
+typing_extensions                 4.11.0
+tzdata                            2023.3
+uc-micro-py                       1.0.1
+ujson                             5.10.0
+unicodedata2                      15.1.0
+Unidecode                         1.3.8
+urllib3                           2.2.3
+w3lib                             2.1.2
+watchdog                          4.0.1
+wcwidth                           0.2.5
+webencodings                      0.5.1
+websocket-client                  1.8.0
+Werkzeug                          3.0.3
+whatthepatch                      1.0.2
+wheel                             0.44.0
+widgetsnbextension                3.6.6
+win-inet-pton                     1.1.0
+wrapt                             1.14.1
+xarray                            2023.6.0
+xlwings                           0.32.1
+xyzservices                       2022.9.0
+yapf                              0.40.2
+yarl                              1.11.0
+zict                              3.0.0
+zipp                              3.17.0
+zope.interface                    5.4.0
+zstandard                         0.23.0
 
-ImportError: 
-A module that was compiled using NumPy 1.x cannot be run in
-NumPy 2.5.1 as it may crash. To support both 1.x and 2.x
-versions of NumPy, modules must be compiled with NumPy 2.0.
-Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
-
-If you are a user of the module, the easiest solution will be to
-downgrade to 'numpy<2' or try to upgrade the affected module.
-We expect that some modules will need time to support NumPy 2.
-
-
----------------------------------------------------------------------------
-ImportError                               Traceback (most recent call last)
-File ~\AppData\Roaming\Python\Python312\site-packages\numpy\core\_multiarray_umath.py:46, in __getattr__(attr_name)
-     41     # Also print the message (with traceback).  This is because old versions
-     42     # of NumPy unfortunately set up the import to replace (and hide) the
-     43     # error.  The traceback shouldn't be needed, but e.g. pytest plugins
-     44     # seem to swallow it and we should be failing anyway...
-     45     sys.stderr.write(msg + tb_msg)
----> 46     raise ImportError(msg)
-     48 ret = getattr(_multiarray_umath, attr_name, None)
-     49 if ret is None:
-
-ImportError: 
-A module that was compiled using NumPy 1.x cannot be run in
-NumPy 2.5.1 as it may crash. To support both 1.x and 2.x
-versions of NumPy, modules must be compiled with NumPy 2.0.
-Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
-
-If you are a user of the module, the easiest solution will be to
-downgrade to 'numpy<2' or try to upgrade the affected module.
-We expect that some modules will need time to support NumPy 2.
-
----------------------------------------------------------------------------
-ImportError                               Traceback (most recent call last)
-Cell In[3], line 2
-      1 import scipy
-----> 2 import statsmodels
-      4 print("SciPy version :", scipy.__version__)
-      5 print("SciPy file    :", scipy.__file__)
-
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\statsmodels\__init__.py:1
-----> 1 from statsmodels.compat.patsy import monkey_patch_cat_dtype
-      3 from statsmodels._version import __version__, __version_tuple__
-      5 __version_info__ = __version_tuple__
-
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\statsmodels\compat\__init__.py:1
-----> 1 from statsmodels.tools._testing import PytestTester
-      3 from .python import (
-      4     asunicode,
-      5     asbytes,
-   (...)
-     10     lfilter,
-     11 )
-     13 __all__ = [
-     14     "asunicode",
-     15     "asbytes",
-   (...)
-     21     "test",
-     22 ]
-
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\statsmodels\tools\__init__.py:1
-----> 1 from .tools import add_constant, categorical
-      2 from statsmodels.tools._testing import PytestTester
-      4 __all__ = ['test', 'add_constant', 'categorical']
-
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\statsmodels\tools\tools.py:6
-      4 import numpy as np
-      5 import pandas as pd
-----> 6 import scipy.linalg
-      8 from statsmodels.tools.data import _is_using_pandas
-      9 from statsmodels.tools.validation import array_like
-
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\scipy\linalg\__init__.py:203
-      1 """
-      2 ====================================
-      3 Linear algebra (:mod:`scipy.linalg`)
-   (...)
-    200 
-    201 """  # noqa: E501
---> 203 from ._misc import *
-    204 from ._cythonized_array_utils import *
-    205 from ._basic import *
-
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\scipy\linalg\_misc.py:3
-      1 import numpy as np
-      2 from numpy.linalg import LinAlgError
-----> 3 from .blas import get_blas_funcs
-      4 from .lapack import get_lapack_funcs
-      6 __all__ = ['LinAlgError', 'LinAlgWarning', 'norm']
-
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\scipy\linalg\blas.py:213
-    210 import numpy as _np
-    211 import functools
---> 213 from scipy.linalg import _fblas
-    214 try:
-    215     from scipy.linalg import _cblas
-
-ImportError: numpy.core.multiarray failed to import
+(base) C:\Windows\System32>^A
