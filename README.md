@@ -1,49 +1,56 @@
-i get below msg, i guess its now allowing me to do anything due to access, but earlier i did for numpy and statesmodel right, guide me correctly to solve this pandas issue 
+anaconda cmd putput
 
 
-(base) C:\Windows\System32>conda install pandas=2.2.2 statsmodels=0.14.2 --force-reinstall
-Channels:
- - defaults
-Platform: win-64
-Collecting package metadata (repodata.json): done
-Solving environment: done
+(base) C:\Windows\System32>where conda
+C:\Program Files\Anaconda3_2024_10_1\Library\bin\conda.bat
+C:\Program Files\Anaconda3_2024_10_1\Scripts\conda.exe
+C:\Program Files\Anaconda3_2024_10_1\condabin\conda.bat
 
-## Package Plan ##
+(base) C:\Windows\System32>where pyhton
+INFO: Could not find files for the given pattern(s).
 
-  environment location: C:\Program Files\Anaconda3_2024_10_1
+(base) C:\Windows\System32>where pyhton
+INFO: Could not find files for the given pattern(s).
 
-  added / updated specs:
-    - pandas=2.2.2
-    - statsmodels=0.14.2
+(base) C:\Windows\System32>where python
+C:\Program Files\Anaconda3_2024_10_1\python.exe
+C:\Users\YWA95\AppData\Local\Microsoft\WindowsApps\python.exe
 
+(base) C:\Windows\System32>conda info
 
-The following NEW packages will be INSTALLED:
+     active environment : base
+    active env location : C:\Program Files\Anaconda3_2024_10_1
+            shell level : 1
+       user config file : C:\Users\YWA95\.condarc
+ populated config files : C:\Program Files\Anaconda3_2024_10_1\.condarc
+          conda version : 24.9.2
+    conda-build version : 24.9.0
+         python version : 3.12.7.final.0
+                 solver : libmamba (default)
+       virtual packages : __archspec=1=skylake
+                          __conda=24.9.2=0
+                          __win=0=0
+       base environment : C:\Program Files\Anaconda3_2024_10_1  (read only)
+      conda av data dir : C:\Program Files\Anaconda3_2024_10_1\etc\conda
+  conda av metadata url : None
+           channel URLs : https://repo.anaconda.com/pkgs/main/win-64
+                          https://repo.anaconda.com/pkgs/main/noarch
+                          https://repo.anaconda.com/pkgs/r/win-64
+                          https://repo.anaconda.com/pkgs/r/noarch
+                          https://repo.anaconda.com/pkgs/msys2/win-64
+                          https://repo.anaconda.com/pkgs/msys2/noarch
+          package cache : C:\Program Files\Anaconda3_2024_10_1\pkgs
+                          C:\Users\YWA95\.conda\pkgs
+                          C:\Users\YWA95\AppData\Local\conda\conda\pkgs
+       envs directories : C:\Users\YWA95\.conda\envs
+                          C:\Program Files\Anaconda3_2024_10_1\envs
+                          C:\Users\YWA95\AppData\Local\conda\conda\envs
+               platform : win-64
+             user-agent : conda/24.9.2 requests/2.32.3 CPython/3.12.7 Windows/11 Windows/10.0.26200 solver/libmamba conda-libmamba-solver/24.9.0 libmambapy/1.5.8 aau/0.4.4 c/. s/.
+          administrator : False
+             netrc file : None
+           offline mode : False
 
-  ucrt               pkgs/main/win-64::ucrt-10.0.22621.0-haa95532_0
-  vc14_runtime       pkgs/main/win-64::vc14_runtime-14.44.35208-h4927774_12
+ VS CODE OUTPUT
 
-The following packages will be UPDATED:
-
-  ca-certificates                      2024.9.24-haa95532_0 --> 2026.5.14-haa95532_0
-  certifi                         2024.8.30-py312haa95532_0 --> 2026.6.17-py312haa95532_0
-  conda                              24.9.2-py312haa95532_0 --> 24.11.3-py312haa95532_0
-  openssl                                 3.0.15-h827c3e9_0 --> 3.5.7-hbb43b14_0
-  vs2015_runtime                     14.40.33807-h98bb1dd_1 --> 14.44.35208-ha6b5a95_12
-
-
-Proceed ([y]/n)? [y]
-Invalid choice: [y]
-Proceed ([y]/n)? y
-
-
-Downloading and Extracting Packages:
-
-Preparing transaction: done
-Verifying transaction: failed
-
-EnvironmentNotWritableError: The current user does not have write permissions to the target environment.
-  environment location: C:\Program Files\Anaconda3_2024_10_1
-
-
-
-(base) C:\Windows\System32>
+ C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\.venv\Scripts\python.exe
