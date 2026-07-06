@@ -1,9 +1,12 @@
-cd "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251"
+out from above code
 
-"C:\Program Files\Anaconda3_2024_10_1\python.exe" -m venv .venv
+c:\Program Files\Anaconda3_2024_10_1\python.exe
+3.12.7 | packaged by Anaconda, Inc. | (main, Oct  4 2024, 13:17:27) [MSC v.1929 64 bit (AMD64)]
 
-.venv\Scripts\activate
 
-python --version
-
-pip install numpy==1.26.4 pandas==2.2.2 scipy==1.13.1 statsmodels==0.14.2 scikit-learn openpyxl matplotlib seaborn
+Pandas: 3.0.3
+Statsmodels: 0.14.2
+Numpy: 1.26.4
+C:\Users\YWA95\AppData\Roaming\Python\Python312\site-packages\pandas\__init__.py
+c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\statsmodels\__init__.py
+c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\numpy\__init__.py
