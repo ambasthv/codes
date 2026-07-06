@@ -1,2 +1,12 @@
-c:\Program Files\Anaconda3_2024_10_1\python.exe
-['c:\\Users\\YWA95\\OneDrive - First-Citizens Bank & Trust Co\\Old Download----NEW WORK\\05 05 26 ID_BSD Code Updates20260505094251\\01. Code', 'c:\\Users\\YWA95\\OneDrive - First-Citizens Bank & Trust Co\\Old Download----NEW WORK\\05 05 26 ID_BSD Code Updates20260505094251\\01. Code\\src', 'c:\\Program Files\\Anaconda3_2024_10_1\\python312.zip', 'c:\\Program Files\\Anaconda3_2024_10_1\\DLLs', 'c:\\Program Files\\Anaconda3_2024_10_1\\Lib', 'c:\\Program Files\\Anaconda3_2024_10_1', '', 'C:\\Users\\YWA95\\AppData\\Roaming\\Python\\Python312\\site-packages', 'c:\\Program Files\\Anaconda3_2024_10_1\\Lib\\site-packages', 'c:\\Program Files\\Anaconda3_2024_10_1\\Lib\\site-packages\\win32', 'c:\\Program Files\\Anaconda3_2024_10_1\\Lib\\site-packages\\win32\\lib', 'c:\\Program Files\\Anaconda3_2024_10_1\\Lib\\site-packages\\Pythonwin', 'c:\\Program Files\\Anaconda3_2024_10_1\\Lib\\site-packages\\setuptools\\_vendor']
+import scipy
+import statsmodels
+
+print("SciPy version :", scipy.__version__)
+print("SciPy file    :", scipy.__file__)
+
+print("\nStatsmodels version :", statsmodels.__version__)
+print("Statsmodels file    :", statsmodels.__file__)
+
+
+import statsmodels.api as sm
+print("Statsmodels imported successfully!")
