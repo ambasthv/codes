@@ -1,3 +1,18 @@
-python -c "import pandas; print(pandas.__version__); print(pandas.__file__)"
+import sys
 
-conda install pandas=2.2.2
+print(sys.executable)
+
+import subprocess
+subprocess.run([sys.executable, "-m", "pip", "show", "pandas"])
+
+import sys
+import subprocess
+
+subprocess.run([
+    sys.executable,
+    "-m",
+    "pip",
+    "uninstall",
+    "-y",
+    "pandas"
+])
