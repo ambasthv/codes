@@ -1,89 +1,47 @@
-HERE I AM GETTING ERROR OF QUICK RATIO, I HAVE COMMENTED OUT THEM FROM FORUMLA AND COL REQUIRED, 
-CELL 1 CODE
-cols_to_keep = [
-    'obligor_id', 
-    'snapshot_date', 
-    'statement_date', 
-    'model_routing',
-    'lifestage',
-    '1205_niche_desc',
+GETTING ERROR HERE WITH GRAPHS, ONLY ONE GRPAH IS BEING SHOWN
+
+for var in var_list2:
+    plot_predicted_actual2(
+    df_id_bsd,
+    var,
     'valid_def_ind_1yr',
-    'valid_default_event',
-    'valid_default_date',
-    'balance',
-    'exposure',
-    'financial_statement_found',
-    'cash_and_equivalents',
-    'ebitda',
-    'capex',
-    'interest_expense',
-    'total_debt',
-    'total_assets',
-    'market_securities',
-    'current_assets',
-    'current_liabilities',
-    'net_sales',
-    'net_profit',
-    'deferred_revenue',
-    'gross_profit',
-    'cpltd',
-    'EBITDA/(Interest Expense+CPLTD)',
-    '(Total Assets-Total Liabilities)/Total Liabilities',
-    'Total Debt/Total Assets',
-    'Cash/Total Debt',
-    'Current Assets/Current Liabilities',
-    #'Quick Ratio',
-    #'Adjusted Quick Ratio',
-    'Cash and Equivalents/Total Debt',
-    'Total Debt/Equity',
-    'Net Sales/Total Assets',
-    '(EBITDA-Capex)/(Interest Expense+CPLTD)',
-    'Gross Profit/Net Sales_x_100',
-    'Net Profit/Net Sales_x_100'
-    ]
+    num_buckets=4,
+    segment_var='lifestage_map2',
+    variable=var,
+    folder_name='Images',
+    plot_axis='log',
+    plot_ranges=False)
 
 
-df_id_bsd_select = df_id_bsd_unfilt[cols_to_keep]
+    ERROR IS 
+    ---------------------------------------------------------------------------
+FileNotFoundError                         Traceback (most recent call last)
+Cell In[35], line 2
+      1 for var in var_list2:
+----> 2     plot_predicted_actual2(
+      3     df_id_bsd,
+      4     var,
+      5     'valid_def_ind_1yr',
+      6     num_buckets=4,
+      7     segment_var='lifestage_map2',
+      8     variable=var,
+      9     folder_name='Images',
+     10     plot_axis='log',
+     11     plot_ranges=False)
 
-CELL 2 CODE
-exception_handling_summary = pd.DataFrame({
-    "negative_ct": [(df_id_bsd_unfilt[col] < 0).sum() for col in var_list],
-    "inf_pct": [np.isinf(df_id_bsd_unfilt[col]).sum() for col in var_list],
-    "null_pct": [df_id_bsd_unfilt[col].isnull().sum() for col in var_list]
-}, index=var_list)
-
-exception_handling_summary.to_csv('exception_handling_summary.csv')
-
-ERROR
----------------------------------------------------------------------------
-KeyError                                  Traceback (most recent call last)
-File c:\Program Files\Anaconda3_2024_10_1\Lib\site-packages\pandas\core\indexes\base.py:3805, in Index.get_loc(self, key)
-   3804 try:
--> 3805     return self._engine.get_loc(casted_key)
-   3806 except KeyError as err:
-
-File index.pyx:167, in pandas._libs.index.IndexEngine.get_loc()
-
-File index.pyx:196, in pandas._libs.index.IndexEngine.get_loc()
-
-File pandas\\_libs\\hashtable_class_helper.pxi:7081, in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-File pandas\\_libs\\hashtable_class_helper.pxi:7089, in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-KeyError: 'Quick Ratio'
-
-The above exception was the direct cause of the following exception:
-
-KeyError                                  Traceback (most recent call last)
-Cell In[20], line 2
-      1 exception_handling_summary = pd.DataFrame({
-----> 2     "negative_ct": [(df_id_bsd_unfilt[col] < 0).sum() for col in var_list],
-      3     "inf_pct": [np.isinf(df_id_bsd_unfilt[col]).sum() for col in var_list],
-      4     "null_pct": [df_id_bsd_unfilt[col].isnull().sum() for col in var_list]
+Cell In[4], line 151
+    144 safe_variable = variable.replace('/', '_')
+    146 file_path = os.path.join(
+    147     folder_name,
+    148     f'{safe_variable}_{segment_var}_bucketed_plot.png'
+    149 )
+--> 151 plt.savefig(file_path, bbox_inches='tight')
+    152 plt.show()
+    153 plt.close()
 ...
-   3815     #  InvalidIndexError. Otherwise we fall through and re-raise
-   3816     #  the TypeError.
-   3817     self._check_indexing_error(key)
+-> 2563         fp = builtins.open(filename, "w+b")
+   2564 else:
+   2565     fp = cast(IO[bytes], fp)
 
-KeyError: 'Quick Ratio'
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\YWA95\\OneDrive - First-Citizens Bank & Trust Co\\Old Download----NEW WORK\\05 05 26 ID_BSD Code Updates20260505094251\\01. Code\\model_development\\segmentation_analysis\\code\\Images\\(EBITDA-Capex)_(Interest Expense+CPLTD)_winsor_lifestage_map2_bucketed_plot.png'
 Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
