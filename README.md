@@ -1,76 +1,75 @@
-import numpy as np
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
-# -----------------------------
-# Settings
-# -----------------------------
+# Variable to analyze
 var = 'Gross Profit/Net Sales_x_100_winsor'
-segment_var = 'lifestage_map2'
+target = 'valid_def_ind_1yr'
+segment = 'lifestage_map2'
 num_buckets = 10
 
-# Keep only required columns
-temp = df_id_bsd[[var, segment_var]].dropna().copy()
+# Keep required columns only
+temp = df_id_bsd[[var, target, segment]].dropna().copy()
 
-# --------------------------------------------------
-# Step 1: Create EXACT SAME buckets as graph function
-# --------------------------------------------------
-ranks = temp[var].rank(method='first')
+# Create equal-frequency buckets (same methodology as your graph code)
+temp['rank'] = temp[var].rank(method='first')
 
 temp['bucket'] = pd.qcut(
-    ranks,
+    temp['rank'],
     q=num_buckets,
-    labels=False
-) + 1
+    labels=range(1, num_buckets + 1)
+)
 
-# --------------------------------------------------
-# Step 2: Calculate actual bucket ranges
-# --------------------------------------------------
+# Calculate actual bucket ranges for interpretation
 bucket_ranges = (
-    temp.groupby('bucket')[var]
-    .agg(['min', 'max'])
+    temp.groupby('bucket', observed=True)[var]
+    .agg(['min', 'max', 'count'])
     .reset_index()
 )
 
-bucket_ranges['Bin'] = (
-    bucket_ranges['min'].round(4).astype(str)
-    + ' - '
-    + bucket_ranges['max'].round(4).astype(str)
-)
+print("\nBucket Ranges:")
+print(bucket_ranges)
 
-# --------------------------------------------------
-# Step 3: Count observations by bucket and lifestage
-# --------------------------------------------------
-count_df = (
-    temp.groupby(['bucket', segment_var])
-        .size()
-        .unstack(fill_value=0)
+# Aggregate default rates by bucket and lifestage
+plot_df = (
+    temp.groupby(['bucket', segment], observed=True)
+        .agg(
+            default_rate=(target, 'mean'),
+            avg_margin=(var, 'mean'),
+            count=(var, 'count')
+        )
         .reset_index()
 )
 
-# --------------------------------------------------
-# Step 4: Attach actual bucket ranges
-# --------------------------------------------------
-final_df = count_df.merge(
-    bucket_ranges[['bucket', 'Bin']],
-    on='bucket',
-    how='left'
+# -------------------------
+# Plot
+# -------------------------
+
+plt.figure(figsize=(12,7))
+
+for seg in plot_df[segment].unique():
+
+    seg_df = (
+        plot_df[plot_df[segment] == seg]
+        .sort_values('bucket')
+    )
+
+    plt.plot(
+        seg_df['bucket'],
+        seg_df['default_rate'],
+        marker='o',
+        linewidth=2,
+        label=seg
+    )
+
+plt.xlabel('Gross Margin Bucket (1 = Lowest, 10 = Highest)')
+plt.ylabel('Default Rate')
+plt.title(
+    'Gross Profit / Net Sales (%) Bucketed Default Rate by Lifestage'
 )
 
-# Put Bin beside Bucket for readability
-cols = ['bucket', 'Bin'] + [
-    c for c in final_df.columns
-    if c not in ['bucket', 'Bin']
-]
-
-final_df = final_df[cols]
-
-# --------------------------------------------------
-# Step 5: Export
-# --------------------------------------------------
-final_df.to_excel(
-    'Gross_Margin_10_Bucket_Counts_By_Lifestage.xlsx',
-    index=False
-)
-
-print(final_df)
-print("\nExcel exported successfully.")
+plt.xticks(range(1, num_buckets + 1))
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
