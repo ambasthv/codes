@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# ----------------------------
-# Configuration
-# ----------------------------
+# ==========================================
+# SETTINGS
+# ==========================================
 
 variable = 'Gross Profit/Net Sales_x_100'
 target_var = 'valid_def_ind_1yr'
@@ -15,9 +15,9 @@ folder_name = 'Images'
 
 os.makedirs(folder_name, exist_ok=True)
 
-# ----------------------------
-# Prepare Data
-# ----------------------------
+# ==========================================
+# PREPARE DATA
+# ==========================================
 
 used_data = (
     df_id_bsd[[variable, target_var, segment_var]]
@@ -25,8 +25,21 @@ used_data = (
     .copy()
 )
 
-# Equal frequency bucketing
-ranks = used_data[variable].rank(method='first')
+# ------------------------------------------
+# Cap negative values below -100
+# ------------------------------------------
+
+used_data['gross_margin_capped'] = (
+    used_data[variable].clip(lower=-100)
+)
+
+plot_variable = 'gross_margin_capped'
+
+# ==========================================
+# SAME BUCKETING LOGIC AS plot_predicted_actual2
+# ==========================================
+
+ranks = used_data[plot_variable].rank(method='first')
 
 used_data['x_bin'] = pd.qcut(
     ranks,
@@ -34,32 +47,32 @@ used_data['x_bin'] = pd.qcut(
     labels=False
 )
 
-# Actual bucket edges for labels and histogram
+# Actual bucket edges
 bin_edges = np.quantile(
-    used_data[variable],
+    used_data[plot_variable],
     np.linspace(0, 1, num_buckets + 1)
 )
 
 bin_edges = np.unique(bin_edges)
 
-# ----------------------------
-# Aggregate for plotting
-# ----------------------------
+# ==========================================
+# CREATE PLOT DATASET
+# ==========================================
 
 plot_dataset = (
     used_data
     .groupby(['x_bin', segment_var], observed=True)
     .agg(
         default_rate=(target_var, 'mean'),
-        bucket_value=(variable, 'mean'),
-        count=(variable, 'count')
+        bucket_value=(plot_variable, 'mean'),
+        count=(plot_variable, 'count')
     )
     .reset_index()
 )
 
-# ----------------------------
-# Plot
-# ----------------------------
+# ==========================================
+# PLOT
+# ==========================================
 
 plt.figure(figsize=(12,7))
 
@@ -78,29 +91,30 @@ for segment, seg_df in plot_dataset.groupby(segment_var):
         label=str(segment)
     )
 
-ax1.set_xlabel(variable)
+# Labels
+ax1.set_xlabel('Gross Profit / Net Sales (%)')
 ax1.set_ylabel('Default Rate')
+
 ax1.set_title(
-    f'{variable} Bucketed Default Rate by {segment_var}'
+    'Gross Profit / Net Sales (%) vs Default Rate by Lifestage\n'
+    '(Values below -100 capped at -100 for visualization)'
 )
 
-# Compress extreme negatives while preserving actual values
-ax1.set_xscale('symlog', linthresh=25)
-
+# Legend
 ax1.legend(
-    title=segment_var,
+    title='Lifestage',
     bbox_to_anchor=(1.05,1),
     loc='upper left'
 )
 
-# ----------------------------
-# Histogram in background
-# ----------------------------
+# ==========================================
+# HISTOGRAM BACKGROUND
+# ==========================================
 
 ax2 = ax1.twinx()
 
 ax2.hist(
-    used_data[variable],
+    used_data[plot_variable],
     bins=bin_edges,
     color='lightgray',
     alpha=0.25,
@@ -109,20 +123,27 @@ ax2.hist(
 
 ax2.set_ylabel('Count')
 
-# Actual bucket ranges on x-axis
+# ==========================================
+# X AXIS LABELS
+# ==========================================
+
 ax1.set_xticks(bin_edges)
 
 ax1.set_xticklabels(
-    [f'{x:.2f}' for x in bin_edges],
+    [f'{x:.1f}' for x in bin_edges],
     rotation=45,
     fontsize=8
 )
 
 plt.tight_layout()
 
+# ==========================================
+# SAVE IMAGE
+# ==========================================
+
 file_path = os.path.join(
     folder_name,
-    'Gross_Margin_Lifestage_Bucketed_Plot.png'
+    'Gross_Margin_Capped_Minus100_Lifestage.png'
 )
 
 plt.savefig(
