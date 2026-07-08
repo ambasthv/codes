@@ -1,1 +1,16 @@
-python -m pip install numpy==1.26.4 pandas==2.2.2 jupyter==1.1.1 ipykernel==6.29.5 openpyxl==3.1.5 xlwings==0.33.15 python-dotenv==1.0.1 pyarrow==16.1.0 matplotlib==3.8.4 scipy==1.11.4 scikit-learn==1.5.2 tqdm==4.67.1 PyYAML==6.0.2 statsmodels==0.14.4 mlxtend==0.23.3 seaborn==0.13.2
+  File "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\01. Code\src\run.py", line 79, in <module>
+    run()
+  File "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\01. Code\src\run.py", line 25, in run
+    support = load_support(db_path, config["support_file"])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\01. Code\src\loader\loader.py", line 34, in load_support
+    wb = pd.ExcelFile(f"{db_path}/{support_path}")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\.venv\Lib\site-packages\pandas\io\excel\_base.py", line 1567, in __init__
+    self._reader = self._engines[engine](
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\.venv\Lib\site-packages\pandas\io\excel\_openpyxl.py", line 552, in __init__
+    import_optional_dependency("openpyxl")
+  File "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\.venv\Lib\site-packages\pandas\compat\_optional.py", line 138, in import_optional_dependency
+    raise ImportError(msg)
+ImportError: Missing optional dependency 'openpyxl'.  Use pip or conda to install openpyxl.
