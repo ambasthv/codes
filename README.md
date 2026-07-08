@@ -1,17 +1,15 @@
-python -m pip install ^
-numpy==1.26.4 ^
-pandas==2.2.2 ^
-jupyter==1.1.1 ^
-ipykernel==6.29.5 ^
-openpyxl==3.1.5 ^
-xlwings==0.33.15 ^
-python-dotenv==1.0.1 ^
-pyarrow==16.1.0 ^
-matplotlib==3.8.4 ^
-scipy==1.11.4 ^
-scikit-learn==1.5.2 ^
-tqdm==4.67.1 ^
-PyYAML==6.0.2 ^
-statsmodels==0.14.4 ^
-mlxtend==0.23.3 ^
-seaborn==0.13.2
+getting this errors
+i have created .venv folder using ctr+p, but it is not coming in green coloured in terminal vs code. 
+
+see the errors 
+(not in use .venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling> .\.venv\Scripts\activate
+(.venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling> pip install pandas
+Fatal error in launcher: Unable to create process using '"C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\Old Download----NEW WORK\05 05 26 ID_BSD Code Updates20260505094251\.venv\Scripts\python.exe"  "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\not in use .venv\Scripts\pip.exe" install pandas': The system cannot find the file specified.
+
+(.venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling> cd "01. Code"
+(.venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\01. Code> python src\run.py  
+Traceback (most recent call last):
+  File "C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\01. Code\src\run.py", line 6, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+(.venv) PS C:\Users\YWA95\OneDrive - First-Citizens Bank & Trust Co\1.OW\ID_BSD Modelling\01. Code> 
