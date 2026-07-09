@@ -1,178 +1,142 @@
 //@version=6
-strategy("Supertrend AI Confidence Strategy", overlay=true,
+strategy("Supertrend AI Intraday Strategy", overlay=true,
      initial_capital=100000,
      default_qty_type=strategy.percent_of_equity,
      default_qty_value=100,
      pyramiding=0)
 
-//----------------------------------------------------
-// Inputs
-//----------------------------------------------------
-atrPeriod  = input.int(10, "Supertrend ATR Length")
-factor     = input.float(3.0, "Supertrend Factor")
-rsiLength  = input.int(14, "RSI Length")
-adxLength  = input.int(14, "ADX Length")
-volLength  = input.int(20, "Volume Average Length")
-dmaLength  = input.int(200, "200 DMA Length")
+// ===================== INPUTS =====================
+stAtr      = input.int(7, "Supertrend ATR")
+stFactor   = input.float(2.2, "Supertrend Factor")
+rsiBuy     = input.int(58, "RSI Buy Level")
+rsiSell    = input.int(48, "RSI Sell Level")
+adxMin     = input.int(22, "Minimum ADX")
+volFactor  = input.float(1.3, "Relative Volume")
+buyerMin   = input.int(58, "Buyer Dominance %")
+breakoutLB = input.int(5, "Breakout Lookback")
 
-//----------------------------------------------------
-// Indicators
-//----------------------------------------------------
-[supertrend, direction] = ta.supertrend(factor, atrPeriod)
+// ===================== INDICATORS =====================
+[st, dir] = ta.supertrend(stFactor, stAtr)
 
-rsiValue = ta.rsi(close, rsiLength)
-dma200 = ta.sma(close, dmaLength)
-volMA = ta.sma(volume, volLength)
-atrValue = ta.atr(14)
+rsi = ta.rsi(close,14)
+dma200 = ta.sma(close,200)
+vwapVal = ta.vwap(close)
+volMA = ta.sma(volume,20)
+atr = ta.atr(14)
 
-[macdLine, signalLine, histLine] = ta.macd(close, 12, 26, 9)
+[macdLine,signalLine,_] = ta.macd(close,12,26,9)
 
-vwapValue = ta.vwap(close)
+// ---------- Manual ADX ----------
+upMove = high-high[1]
+downMove = low[1]-low
 
-//----------------------------------------------------
-// Manual ADX Calculation
-//----------------------------------------------------
-upMove = high - high[1]
-downMove = low[1] - low
+plusDM = upMove > downMove and upMove > 0 ? upMove : 0
+minusDM = downMove > upMove and downMove > 0 ? downMove : 0
 
-plusDM = (upMove > downMove and upMove > 0) ? upMove : 0
-minusDM = (downMove > upMove and downMove > 0) ? downMove : 0
+tr = ta.tr(true)
 
-trueRange = ta.tr(true)
+plusDI = 100 * ta.rma(plusDM,14) / ta.rma(tr,14)
+minusDI = 100 * ta.rma(minusDM,14) / ta.rma(tr,14)
 
-smoothedTR = ta.rma(trueRange, adxLength)
-smoothedPlusDM = ta.rma(plusDM, adxLength)
-smoothedMinusDM = ta.rma(minusDM, adxLength)
+dx = 100 * math.abs(plusDI-minusDI) / (plusDI+minusDI)
+adx = ta.rma(dx,14)
 
-plusDI = 100 * smoothedPlusDM / smoothedTR
-minusDI = 100 * smoothedMinusDM / smoothedTR
-
-dx = 100 * math.abs(plusDI - minusDI) / (plusDI + minusDI)
-
-adx = ta.rma(dx, adxLength)
-
-//----------------------------------------------------
-// Buyer Seller Dominance
-//----------------------------------------------------
+// ===================== VOLUME DOMINANCE =====================
 buyVol = close > open ? volume : 0
 sellVol = close < open ? volume : 0
 
-bullVol = ta.sma(buyVol, 20)
-bearVol = ta.sma(sellVol, 20)
+buyers = ta.sma(buyVol,20)
+sellers = ta.sma(sellVol,20)
 
-totalVol = bullVol + bearVol
+buyerPct = (buyers/(buyers+sellers))*100
+sellerPct = 100-buyerPct
 
-buyerDominance = totalVol > 0 ? bullVol / totalVol * 100 : 50
-sellerDominance = 100 - buyerDominance
+// ===================== CONFIDENCE ENGINE =====================
+confidence = 0.0
 
-//----------------------------------------------------
-// Confidence Score
-//----------------------------------------------------
-confidence = 0
-
-confidence += direction < 0 ? 20 : 0
+confidence += dir < 0 ? 20 : 0
 confidence += close > dma200 ? 15 : 0
-confidence += adx > 30 ? 15 : adx > 20 ? 10 : 0
-confidence += volume > volMA ? 15 : 0
-confidence += (rsiValue > 55 and rsiValue < 75) ? 10 : 0
+confidence += adx > adxMin ? 15 : 0
+confidence += volume > volMA*volFactor ? 15 : 0
+confidence += rsi > rsiBuy ? 10 : 0
 confidence += macdLine > signalLine ? 10 : 0
-confidence += close > vwapValue ? 10 : 0
-confidence += atrValue > ta.sma(atrValue,20) ? 5 : 0
+confidence += close > vwapVal ? 10 : 0
+confidence += atr > ta.sma(atr,20) ? 5 : 0
 
-//----------------------------------------------------
-// Market State
-//----------------------------------------------------
-sidewaysRisk =
-     adx < 20 ? 70 :
-     adx < 25 ? 50 :
-     adx < 30 ? 30 :
-     15
+// ===================== ENTRY FILTERS =====================
+breakout = close > ta.highest(high, breakoutLB)[1]
 
-expectedMovePercent = (atrValue / close) * confidence / 10
+longEntry =
+     dir < 0 and dir[1] > 0 and
+     rsi > rsiBuy and
+     adx > adxMin and
+     volume > volMA * volFactor and
+     buyerPct > buyerMin and
+     close > dma200 and
+     close > vwapVal and
+     breakout
 
-trendStrength =
-     confidence >= 90 ? "EXTREME" :
-     confidence >= 80 ? "VERY STRONG" :
-     confidence >= 70 ? "STRONG" :
-     confidence >= 60 ? "MODERATE" :
-     "WEAK"
+// ===================== EXIT CONDITIONS =====================
+exitScore = 0
 
-//----------------------------------------------------
-// Entry Conditions
-//----------------------------------------------------
-longSignal = direction < 0 and direction[1] > 0
-shortSignal = direction > 0 and direction[1] < 0
+exitScore += dir > 0 ? 1 : 0
+exitScore += rsi < rsiSell ? 1 : 0
+exitScore += macdLine < signalLine ? 1 : 0
+exitScore += sellerPct > 60 ? 1 : 0
+exitScore += close < vwapVal ? 1 : 0
 
-//----------------------------------------------------
-// Strategy Orders
-//----------------------------------------------------
-if longSignal
-    strategy.close("Short")
+exitLong = exitScore >= 2
+
+// ===================== TARGETS =====================
+targetATR =
+     confidence >= 90 ? 4 :
+     confidence >= 80 ? 3 :
+     confidence >= 70 ? 2 :
+     1.5
+
+longTP = strategy.position_avg_price + atr * targetATR
+longSL = strategy.position_avg_price - atr * 1.5
+
+// ===================== STRATEGY =====================
+if longEntry
     strategy.entry("Long", strategy.long)
 
-if shortSignal
+strategy.exit(
+     "Exit Long",
+     "Long",
+     stop=longSL,
+     limit=longTP)
+
+if exitLong
     strategy.close("Long")
-    strategy.entry("Short", strategy.short)
 
-//----------------------------------------------------
-// Stop Loss and Targets
-//----------------------------------------------------
-longSL = strategy.position_avg_price - atrValue * 1.5
-longTP = strategy.position_avg_price + atrValue * 3
-
-shortSL = strategy.position_avg_price + atrValue * 1.5
-shortTP = strategy.position_avg_price - atrValue * 3
-
-strategy.exit("Long Exit", "Long", stop=longSL, limit=longTP)
-strategy.exit("Short Exit", "Short", stop=shortSL, limit=shortTP)
-
-//----------------------------------------------------
-// Plot Supertrend
-//----------------------------------------------------
-plot(direction < 0 ? supertrend : na,
+// ===================== PLOTS =====================
+plot(dir < 0 ? st : na,
      color=color.green,
      linewidth=2,
      style=plot.style_linebr)
 
-plot(direction > 0 ? supertrend : na,
+plot(dir > 0 ? st : na,
      color=color.red,
      linewidth=2,
      style=plot.style_linebr)
 
-plot(dma200,
-     color=color.orange,
-     linewidth=2,
-     title="200 DMA")
+plot(dma200,color=color.orange,linewidth=2,title="200 DMA")
 
-//----------------------------------------------------
-// Labels
-//----------------------------------------------------
-if longSignal
+// ===================== LABELS =====================
+if longEntry
     label.new(
          bar_index,
          low,
-         "BUY\nConf: " + str.tostring(confidence) + "%\nBuyer: " +
-         str.tostring(math.round(buyerDominance)) + "%\nMove: +" +
-         str.tostring(math.round(expectedMovePercent,1)) + "%\n" +
-         trendStrength,
+         "BUY\n" +
+         "Conf: "+str.tostring(math.round(confidence))+"%\n"+
+         "Buyers: "+str.tostring(math.round(buyerPct))+"%\n"+
+         "ADX: "+str.tostring(math.round(adx))+"\n"+
+         "Exp Move: "+str.tostring(math.round(targetATR*atr/close*100,1))+"%",
          style=label.style_label_up,
          color=color.green,
          textcolor=color.white)
 
-if shortSignal
-    label.new(
-         bar_index,
-         high,
-         "SELL\nConf: " + str.tostring(confidence) + "%\nSeller: " +
-         str.tostring(math.round(sellerDominance)) + "%\nMove: -" +
-         str.tostring(math.round(expectedMovePercent,1)) + "%\n" +
-         trendStrength,
-         style=label.style_label_down,
-         color=color.red,
-         textcolor=color.white)
-
-//----------------------------------------------------
-// Alerts
-//----------------------------------------------------
-alertcondition(longSignal, title="BUY", message="BUY Signal Generated")
-alertcondition(shortSignal, title="SELL", message="SELL Signal Generated")
+// ===================== ALERTS =====================
+alertcondition(longEntry,"BUY","AI BUY Signal")
+alertcondition(exitLong,"SELL","AI SELL Signal")
