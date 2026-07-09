@@ -1,23 +1,113 @@
-conver the below super trend pine indicator from trading view, convert it into a trading view stratagy, 
-entry condition: when the indicator turns green
-exit : when the indicator turns red
-
 //@version=6
-indicator("Supertrend", overlay = true, timeframe = "", timeframe_gaps = true)
+strategy(
+     "Supertrend Reversal Strategy",
+     overlay=true,
+     initial_capital=100000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=100,
+     pyramiding=0,
+     commission_type=strategy.commission.percent,
+     commission_value=0.05)
 
-atrPeriod = input.int(10,    "ATR Length", minval = 1)
-factor =    input.float(3.0, "Factor",     minval = 0.01, step = 0.01)
+// =========================
+// Inputs
+// =========================
+atrPeriod = input.int(10, "ATR Length", minval=1)
+factor = input.float(3.0, "Supertrend Factor", minval=0.1, step=0.1)
 
+showLabels = input.bool(true, "Show Buy/Sell Labels")
+showBackground = input.bool(true, "Trend Background")
+
+// =========================
+// Supertrend Calculation
+// =========================
 [supertrend, direction] = ta.supertrend(factor, atrPeriod)
 
-supertrend := barstate.isfirst ? na : supertrend
-upTrend =    plot(direction < 0 ? supertrend : na, "Up Trend",   color = color.green, style = plot.style_linebr)
-downTrend =  plot(direction < 0 ? na : supertrend, "Down Trend", color = color.red,   style = plot.style_linebr)
-bodyMiddle = plot(barstate.isfirst ? na : (open + close) / 2, "Body Middle",display = display.none)
+// TradingView Supertrend uses:
+// direction < 0 = Green Trend
+// direction > 0 = Red Trend
 
-fill(bodyMiddle, upTrend,   title = "Uptrend background",   color = color.new(color.green, 90), fillgaps = false)
-fill(bodyMiddle, downTrend, title = "Downtrend background", color = color.new(color.red,   90), fillgaps = false)
+longSignal  = direction < 0 and direction[1] > 0
+shortSignal = direction > 0 and direction[1] < 0
 
-alertcondition(direction[1] > direction, title='Downtrend to Uptrend', message='The Supertrend value switched from Downtrend to Uptrend ')
-alertcondition(direction[1] < direction, title='Uptrend to Downtrend', message='The Supertrend value switched from Uptrend to Downtrend')
-alertcondition(direction[1] != direction, title='Trend Change', message='The Supertrend value switched from Uptrend to Downtrend or vice versa')
+// =========================
+// Strategy Orders
+// =========================
+if longSignal
+    strategy.close("Short")
+    strategy.entry("Long", strategy.long)
+
+if shortSignal
+    strategy.close("Long")
+    strategy.entry("Short", strategy.short)
+
+// =========================
+// Plot Supertrend
+// =========================
+upTrend = plot(
+     direction < 0 ? supertrend : na,
+     title="Bullish Supertrend",
+     color=color.green,
+     linewidth=2,
+     style=plot.style_linebr)
+
+downTrend = plot(
+     direction > 0 ? supertrend : na,
+     title="Bearish Supertrend",
+     color=color.red,
+     linewidth=2,
+     style=plot.style_linebr)
+
+midBody = plot(
+     (open + close) / 2,
+     display=display.none)
+
+if showBackground
+    fill(midBody, upTrend,
+         color=color.new(color.green, 90),
+         fillgaps=false)
+
+    fill(midBody, downTrend,
+         color=color.new(color.red, 90),
+         fillgaps=false)
+
+// =========================
+// Buy/Sell Labels
+// =========================
+plotshape(
+     showLabels and longSignal,
+     title="BUY",
+     text="BUY",
+     style=shape.labelup,
+     location=location.belowbar,
+     color=color.green,
+     textcolor=color.white,
+     size=size.small)
+
+plotshape(
+     showLabels and shortSignal,
+     title="SELL",
+     text="SELL",
+     style=shape.labeldown,
+     location=location.abovebar,
+     color=color.red,
+     textcolor=color.white,
+     size=size.small)
+
+// =========================
+// Alerts
+// =========================
+alertcondition(
+     longSignal,
+     title="BUY Alert",
+     message="Supertrend turned GREEN - Enter LONG")
+
+alertcondition(
+     shortSignal,
+     title="SELL Alert",
+     message="Supertrend turned RED - Enter SHORT")
+
+alertcondition(
+     longSignal or shortSignal,
+     title="Trend Change",
+     message="Supertrend changed direction")
