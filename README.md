@@ -1,373 +1,220 @@
-//@version=4
-study(title="UT Bot Alerts", overlay = true)
-
-// Inputs
-a = input(1,     title = "Key Vaule. 'This changes the sensitivity'")
-c = input(10,    title = "ATR Period")
-h = input(false, title = "Signals from Heikin Ashi Candles")
-
-xATR  = atr(c)
-nLoss = a * xATR
-
-src = h ? security(heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = false) : close
-
-xATRTrailingStop = 0.0
-xATRTrailingStop := iff(src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), src - nLoss),
-   iff(src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0), min(nz(xATRTrailingStop[1]), src + nLoss), 
-   iff(src > nz(xATRTrailingStop[1], 0), src - nLoss, src + nLoss)))
- 
-pos = 0   
-pos :=	iff(src[1] < nz(xATRTrailingStop[1], 0) and src > nz(xATRTrailingStop[1], 0), 1,
-   iff(src[1] > nz(xATRTrailingStop[1], 0) and src < nz(xATRTrailingStop[1], 0), -1, nz(pos[1], 0))) 
-   
-xcolor = pos == -1 ? color.red: pos == 1 ? color.green : color.blue 
-
-ema   = ema(src,1)
-above = crossover(ema, xATRTrailingStop)
-below = crossover(xATRTrailingStop, ema)
-
-buy  = src > xATRTrailingStop and above 
-sell = src < xATRTrailingStop and below
-
-barbuy  = src > xATRTrailingStop 
-barsell = src < xATRTrailingStop 
-
-plotshape(buy,  title = "Buy",  text = 'Buy',  style = shape.labelup,   location = location.belowbar, color= color.green, textcolor = color.white, transp = 0, size = size.tiny)
-plotshape(sell, title = "Sell", text = 'Sell', style = shape.labeldown, location = location.abovebar, color= color.red,   textcolor = color.white, transp = 0, size = size.tiny)
-
-barcolor(barbuy  ? color.green : na)
-barcolor(barsell ? color.red   : na)
-
-alertcondition(buy,  "UT Long",  "UT Long")
-alertcondition(sell, "UT Short", "UT Short")
-
------------------
 //@version=5
-//[SHK] STC colored indicator
-//https://www.tradingview.com/u/shayankm/
+indicator(title="Vivek Nifty Master [5min]", overlay=true, max_labels_count=500, max_lines_count=200)
 
-indicator(title='[SHK] Schaff Trend Cycle (STC)', shorttitle='STC', overlay=false)
-EEEEEE = input(12, 'Length')
-BBBB = input(26, 'FastLength')
-BBBBB = input(50, 'SlowLength')
+// COLORS
+C_BUY   = color.new(#00E5FF, 0)
+C_SELL  = color.new(#FF1744, 0)
+C_VWAP  = color.new(#FFD600, 0)
+C_ST_UP = color.new(#00C853, 0)
+C_ST_DN = color.new(#FF1744, 0)
+C_SL    = color.new(#FF6D00, 80)
+C_TGT   = color.new(#00E676, 80)
 
-AAAA(BBB, BBBB, BBBBB) =>
-    fastMA = ta.ema(BBB, BBBB)
-    slowMA = ta.ema(BBB, BBBBB)
-    AAAA = fastMA - slowMA
-    AAAA
+// INPUTS
+ut_key = input.int(1,      "UT Bot | Key Value",       group="1 · UT Bot")
+ut_atr = input.int(10,     "UT Bot | ATR Period",      group="1 · UT Bot")
+ut_ha  = input.bool(false, "UT Bot | Heikin Ashi",     group="1 · UT Bot")
 
-AAAAA(EEEEEE, BBBB, BBBBB) =>
-    AAA = input(0.5)
-    var CCCCC = 0.0
-    var DDD = 0.0
-    var DDDDDD = 0.0
-    var EEEEE = 0.0
-    BBBBBB = AAAA(close, BBBB, BBBBB)
-    CCC = ta.lowest(BBBBBB, EEEEEE)
-    CCCC = ta.highest(BBBBBB, EEEEEE) - CCC
-    CCCCC := CCCC > 0 ? (BBBBBB - CCC) / CCCC * 100 : nz(CCCCC[1])
-    DDD := na(DDD[1]) ? CCCCC : DDD[1] + AAA * (CCCCC - DDD[1])
-    DDDD = ta.lowest(DDD, EEEEEE)
-    DDDDD = ta.highest(DDD, EEEEEE) - DDDD
-    DDDDDD := DDDDD > 0 ? (DDD - DDDD) / DDDDD * 100 : nz(DDDDDD[1])
-    EEEEE := na(EEEEE[1]) ? DDDDDD : EEEEE[1] + AAA * (DDDDDD - EEEEE[1])
-    EEEEE
+stc_len  = input.int(12,    "STC | Cycle Length",      group="2 · STC")
+stc_fast = input.int(26,    "STC | Fast EMA",          group="2 · STC")
+stc_slow = input.int(50,    "STC | Slow EMA",          group="2 · STC")
+stc_smth = input.float(0.5, "STC | Smoothing",         group="2 · STC", step=0.1)
 
-mAAAAA = AAAAA(EEEEEE, BBBB, BBBBB)
-mColor = mAAAAA > mAAAAA[1] ? color.new(color.green, 20) : color.new(color.red, 20)
+qqe_rsi = input.int(14,     "QQE | RSI Length",        group="3 · QQE")
+qqe_sf  = input.int(5,      "QQE | RSI Smoothing",     group="3 · QQE")
+qqe_fac = input.float(4.238,"QQE | Fast Factor",       group="3 · QQE")
 
+st_atr  = input.int(10,    "Supertrend | ATR Period",  group="4 · Supertrend")
+st_mult = input.float(3.0,  "Supertrend | Multiplier", group="4 · Supertrend")
 
+adx_len    = input.int(14, "ADX | Length",             group="5 · ADX")
+adx_thresh = input.int(20, "ADX | Min Strength",       group="5 · ADX")
 
-if mAAAAA[3] <= mAAAAA[2] and mAAAAA[2] > mAAAAA[1] and mAAAAA > 75
-    alert("Red", alert.freq_once_per_bar)
-if mAAAAA[3] >= mAAAAA[2] and mAAAAA[2] < mAAAAA[1] and mAAAAA < 25
-    alert("Green", alert.freq_once_per_bar)
+show_vwap = input.bool(true, "Show VWAP",              group="6 · VWAP")
 
+sig_mode = input.string("MAJORITY (3 of 4)", "Confirmation Mode",
+           options=["ALL AGREE (4 of 4)", "MAJORITY (3 of 4)"],
+           group="7 · Signal Logic")
 
-plot(mAAAAA, color=mColor, title='STC', linewidth=2)
+sl_mult   = input.float(1.5, "SL  | ATR Multiplier",  group="8 · SL & Target")
+tgt_mult  = input.float(3.0, "TGT | ATR Multiplier",  group="8 · SL & Target")
+show_sltgt = input.bool(true, "Show SL/Target Lines",  group="8 · SL & Target")
 
-ul = plot(25, color=color.new(color.gray, 70))
-ll = plot(75, color=color.new(color.gray, 70))
-fill(ul, ll, color=color.new(color.gray, 96))
+// UT BOT
+ut_src = ut_ha ? request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close) : close
+ut_xATR  = ta.atr(ut_atr)
+ut_nLoss = ut_key * ut_xATR
 
-==============
-//@version=4
-// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © colinmck
+var float ut_trail = 0.0
+bool c1 = ut_src > nz(ut_trail[1]) and ut_src[1] > nz(ut_trail[1])
+bool c2 = ut_src < nz(ut_trail[1]) and ut_src[1] < nz(ut_trail[1])
+bool c3 = ut_src > nz(ut_trail[1])
+ut_trail := c1 ? math.max(nz(ut_trail[1]), ut_src - ut_nLoss) :
+            c2 ? math.min(nz(ut_trail[1]), ut_src + ut_nLoss) :
+            c3 ? ut_src - ut_nLoss : ut_src + ut_nLoss
 
-study("QQE signals", overlay=true)
+var int ut_pos = 0
+bool flip_up   = ut_src[1] < nz(ut_trail[1]) and ut_src > nz(ut_trail[1])
+bool flip_down = ut_src[1] > nz(ut_trail[1]) and ut_src < nz(ut_trail[1])
+ut_pos := flip_up ? 1 : flip_down ? -1 : nz(ut_pos[1])
 
-RSI_Period = input(14, title='RSI Length')
-SF = input(5, title='RSI Smoothing')
-QQE = input(4.238, title='Fast QQE Factor')
-ThreshHold = input(10, title="Thresh-hold")
+ut_ema  = ta.ema(ut_src, 1)
+ut_buy  = ut_src > ut_trail and ta.crossover(ut_ema, ut_trail)
+ut_sell = ut_src < ut_trail and ta.crossover(ut_trail, ut_ema)
 
-src = close
-Wilders_Period = RSI_Period * 2 - 1
+// STC
+_macd(s, f, sl) => ta.ema(s, f) - ta.ema(s, sl)
 
-Rsi = rsi(src, RSI_Period)
-RsiMa = ema(Rsi, SF)
-AtrRsi = abs(RsiMa[1] - RsiMa)
-MaAtrRsi = ema(AtrRsi, Wilders_Period)
-dar = ema(MaAtrRsi, Wilders_Period) * QQE
+_stc(len, fast, slow, smth) =>
+    var float f1  = 0.0
+    var float pf  = 0.0
+    var float f2  = 0.0
+    var float pff = 0.0
+    float macd = _macd(close, fast, slow)
+    float lo1  = ta.lowest(macd, len)
+    float hi1  = ta.highest(macd, len) - lo1
+    f1  := hi1 > 0 ? (macd - lo1) / hi1 * 100 : nz(f1[1])
+    pf  := na(pf[1])  ? f1  : pf[1]  + smth * (f1  - pf[1])
+    float lo2 = ta.lowest(pf, len)
+    float hi2 = ta.highest(pf, len) - lo2
+    f2  := hi2 > 0 ? (pf - lo2) / hi2 * 100 : nz(f2[1])
+    pff := na(pff[1]) ? f2  : pff[1] + smth * (f2  - pff[1])
+    pff
 
-longband = 0.0
-shortband = 0.0
-trend = 0
+stc_val  = _stc(stc_len, stc_fast, stc_slow, stc_smth)
+stc_bull = stc_val > stc_val[1] and stc_val < 75
+stc_bear = stc_val < stc_val[1] and stc_val > 25
 
-DeltaFastAtrRsi = dar
-RSIndex = RsiMa
-newshortband = RSIndex + DeltaFastAtrRsi
-newlongband = RSIndex - DeltaFastAtrRsi
-longband := RSIndex[1] > longband[1] and RSIndex > longband[1] ? max(longband[1], newlongband) : newlongband
-shortband := RSIndex[1] < shortband[1] and RSIndex < shortband[1] ? min(shortband[1], newshortband) : newshortband
-cross_1 = cross(longband[1], RSIndex)
-trend := cross(RSIndex, shortband[1]) ? 1 : cross_1 ? -1 : nz(trend[1], 1)
-FastAtrRsiTL = trend == 1 ? longband : shortband
+// QQE
+qqe_wild  = qqe_rsi * 2 - 1
+qqe_rsiV  = ta.rsi(close, qqe_rsi)
+qqe_rsiMa = ta.ema(qqe_rsiV, qqe_sf)
+qqe_atrR  = math.abs(qqe_rsiMa[1] - qqe_rsiMa)
+qqe_maAtr = ta.ema(qqe_atrR, qqe_wild)
+qqe_dar   = ta.ema(qqe_maAtr, qqe_wild) * qqe_fac
 
-// Find all the QQE Crosses
+var float qqe_lb = 0.0
+var float qqe_sb = 0.0
+var int   qqe_tr = 0
 
-QQExlong = 0
-QQExlong := nz(QQExlong[1])
-QQExshort = 0
-QQExshort := nz(QQExshort[1])
-QQExlong := FastAtrRsiTL < RSIndex ? QQExlong + 1 : 0
-QQExshort := FastAtrRsiTL > RSIndex ? QQExshort + 1 : 0
+float qqe_nlb = qqe_rsiMa - qqe_dar
+float qqe_nsb = qqe_rsiMa + qqe_dar
+qqe_lb := qqe_rsiMa[1] > qqe_lb[1] and qqe_rsiMa > qqe_lb[1] ? math.max(qqe_lb[1], qqe_nlb) : qqe_nlb
+qqe_sb := qqe_rsiMa[1] < qqe_sb[1] and qqe_rsiMa < qqe_sb[1] ? math.min(qqe_sb[1], qqe_nsb) : qqe_nsb
 
-//Conditions
+bool qqe_c1 = ta.cross(qqe_lb[1], qqe_rsiMa)
+qqe_tr := ta.cross(qqe_rsiMa, qqe_sb[1]) ? 1 : qqe_c1 ? -1 : nz(qqe_tr[1], 1)
 
-qqeLong = QQExlong == 1 ? FastAtrRsiTL[1] - 50 : na
-qqeShort = QQExshort == 1 ? FastAtrRsiTL[1] - 50 : na
+var int qqe_xl = 0
+var int qqe_xs = 0
+qqe_xl := qqe_tr ==  1 ? qqe_xl + 1 : 0
+qqe_xs := qqe_tr == -1 ? qqe_xs + 1 : 0
+qqe_bull = qqe_xl == 1
+qqe_bear = qqe_xs == 1
 
-// Plotting
+// SUPERTREND
+[st_val, st_dir] = ta.supertrend(st_mult, st_atr)
+st_bull = st_dir < 0
+st_bear = st_dir > 0
+plot(st_bull ? st_val : na, "ST Bull", color=C_ST_UP, linewidth=2, style=plot.style_linebr)
+plot(st_bear ? st_val : na, "ST Bear", color=C_ST_DN, linewidth=2, style=plot.style_linebr)
 
-plotshape(qqeLong, title="QQE long", text="Long", textcolor=color.white, style=shape.labelup, location=location.belowbar, color=color.green, transp=0, size=size.tiny)
-plotshape(qqeShort, title="QQE short", text="Short", textcolor=color.white, style=shape.labeldown, location=location.abovebar, color=color.red, transp=0, size=size.tiny)
+// ADX
+[_, __, adx_val] = ta.dmi(adx_len, adx_len)
+adx_ok = adx_val >= adx_thresh
 
-// Alerts
+// VWAP
+vwap_val = ta.vwap(hlc3)
+plot(show_vwap ? vwap_val : na, "VWAP", color=C_VWAP, linewidth=2)
 
-alertcondition(qqeLong, title="Long", message="Long")
-alertcondition(qqeShort, title="Short", message="Short")
-=============
-// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © hapharmonic
+// SIGNAL LOGIC
+bool ut_bull_state = ut_pos == 1
+bool ut_bear_state = ut_pos == -1
 
-//@version=6
+int bull_score = (ut_bull_state ? 1 : 0) + (stc_bull ? 1 : 0) + (qqe_tr == 1  ? 1 : 0) + (st_bull ? 1 : 0)
+int bear_score = (ut_bear_state ? 1 : 0) + (stc_bear ? 1 : 0) + (qqe_tr == -1 ? 1 : 0) + (st_bear ? 1 : 0)
+int req = sig_mode == "ALL AGREE (4 of 4)" ? 4 : 3
 
-FV = format.volume
-FP = format.percent
-indicator('Volume Delta [hapharmonic]', format = FV, max_bars_back = 4999, max_labels_count = 500)
+bool BUY_SIGNAL  = (ut_buy  or qqe_bull) and bull_score >= req and adx_ok and close > vwap_val
+bool SELL_SIGNAL = (ut_sell or qqe_bear) and bear_score >= req and adx_ok and close < vwap_val
 
-//------------------------------------------
-//                Settings                 | 
-//------------------------------------------
-// Inputs Table
-bool usecandle = input.bool(true, title = 'Volume on Candles',display=display.none)
+// SL / TARGET
+float atr14 = ta.atr(14)
+var float sl_line  = na
+var float tgt_line = na
 
+if BUY_SIGNAL
+    sl_line  := close - sl_mult  * atr14
+    tgt_line := close + tgt_mult * atr14
+    if show_sltgt
+        line.new(bar_index, sl_line,  bar_index + 15, sl_line,  color=C_SL,  width=1, style=line.style_dashed)
+        line.new(bar_index, tgt_line, bar_index + 15, tgt_line, color=C_TGT, width=1, style=line.style_dashed)
 
-color C_Up   = input.color(#12cef8, title = 'Volume Buy', inline = ' ', group = 'Style')
-color C_Down = input.color(#fe3f00, title = 'Volume Sell', inline = ' ', group = 'Style')
-string P_    = input.string(position.top_right,"Position",options = [position.top_right,position.top_center,position.middle_right,
-                                                                         position.middle_left,position.bottom_center,position.middle_center,
-                                                                         position.bottom_left,position.bottom_right,position.top_left],
-                                                                         group = "Style",display=display.none)
-string sL = input.string(size.small , 'Size Label', options = [size.tiny, size.small, size.normal, size.large], group = 'Style',display=display.none)
-string sT = input.string(size.normal, 'Size Table', options = [size.tiny, size.small, size.normal, size.large], group = 'Style',display=display.none)
-bool Label = input.bool(false, inline = 'l')
-History = input.bool(true, inline = 'l')
-// Inputs for EMA lengths and volume confirmation
-bool MAV = input.bool(true, title = 'EMA', group = 'EMA')
-string volumeOption = input.string('Use Volume Confirmation', title = 'Volume Option', options = ['none', 'Use Volume Confirmation'], group = 'EMA',display=display.none)
-bool useVolumeConfirmation = volumeOption == 'none' ? false : true
-int emaFastLength = input(12, title = 'Fast EMA Length', group = 'EMA',display=display.none)
-int emaSlowLength = input(26, title = 'Slow EMA Length', group = 'EMA',display=display.none)
-int volumeConfirmationLength = input(6, title = 'Volume Confirmation Length', group = 'EMA',display=display.none)
-string alert_freq = input.string(alert.freq_once_per_bar_close, title="Alert Frequency",
-                                         options=[alert.freq_once_per_bar, alert.freq_once_per_bar_close],group = "EMA",
-                                         tooltip="If you choose once_per_bar, you will receive immediate notifications (but this may cause interference or indicator repainting).
-                                         \n However, if you choose once_per_bar_close, it will wait for the candle to confirm the signal before notifying.",display=display.none)
-//------------------------------------------
-//             UDT_identifier              | 
-//------------------------------------------
-// Define User Defined Type (UDT) for OHLCV data with default values
-type OHLCV
-	float O = open
-	float H = high
-	float L = low
-	float C = close
-	float V = volume
+if SELL_SIGNAL
+    sl_line  := close + sl_mult  * atr14
+    tgt_line := close - tgt_mult * atr14
+    if show_sltgt
+        line.new(bar_index, sl_line,  bar_index + 15, sl_line,  color=C_SL,  width=1, style=line.style_dashed)
+        line.new(bar_index, tgt_line, bar_index + 15, tgt_line, color=C_TGT, width=1, style=line.style_dashed)
 
-// Define UDT for Volume Data
-type VolumeData
-	float buyVol
-	float sellVol
-	float pcBuy       // Stores percentage of buy volume
-	float pcSell      // Stores percentage of sell volume
-	bool isBuyGreater // Indicates if buy volume is greater True = Buy; otherwise, sell.
-	float higherVol   // Stores the higher volume value
-	float lowerVol    // Stores the lower volume value
-	color higherCol   // Stores the color for the higher volume bar
-	color lowerCol    // Stores the color for the lower volume bar
+// PLOT SIGNALS
+plotshape(BUY_SIGNAL,  title="BUY",  text="BUY",
+     style=shape.labelup,   location=location.belowbar,
+     color=C_BUY,  textcolor=color.black, size=size.normal)
 
-//------------------------------------------
-//   Calculate volumes and percentages     | 
-//------------------------------------------
-calcVolumes(OHLCV ohlcv) =>
-    var VolumeData data = VolumeData.new()
-    data.buyVol       := ohlcv.V * (ohlcv.C - ohlcv.L) / (ohlcv.H - ohlcv.L) // Calculate buy volume using the formula: volume * (close - low) / (high - low)
-    data.sellVol      := ohlcv.V - data.buyVol                               // Calculate sell volume by subtracting buy volume from total volume
-    data.pcBuy        := data.buyVol / ohlcv.V * 100                         // Calculate the percentage of buy volume
-    data.pcSell       := 100 - data.pcBuy                                    // Calculate the percentage of sell volume (100% - buy percentage)
-    data.isBuyGreater := data.buyVol > data.sellVol                          // Determine if buy volume is greater than sell volume
-    data.higherVol    := data.isBuyGreater ? data.buyVol  : data.sellVol     // Assign the higher volume value based on the comparison
-    data.lowerVol     := data.isBuyGreater ? data.sellVol : data.buyVol      // Assign the lower volume value based on the comparison
-    data.higherCol    := data.isBuyGreater ? C_Up     : C_Down               // Assign the color for the higher volume bar based on the comparison
-    data.lowerCol     := data.isBuyGreater ? C_Down   : C_Up                 // Assign the color for the lower volume bar based on the comparison
-    data
+plotshape(SELL_SIGNAL, title="SELL", text="SELL",
+     style=shape.labeldown, location=location.abovebar,
+     color=C_SELL, textcolor=color.white, size=size.normal)
 
-//------------------------------------------
-//             Get volume data             | 
-//------------------------------------------
-// Instantiate OHLCV without explicit values (uses defaults)
-ohlcv   = OHLCV.new()
-volData = calcVolumes(ohlcv)
+barcolor(BUY_SIGNAL  ? C_BUY  : na)
+barcolor(SELL_SIGNAL ? C_SELL : na)
+bgcolor(BUY_SIGNAL   ? color.new(C_BUY,  88) : na)
+bgcolor(SELL_SIGNAL  ? color.new(C_SELL, 88) : na)
 
-// Plot volumes and create labels 
-plot(ohlcv.V          , color=color.new(volData.higherCol, 90), style=plot.style_columns, title='Total',display = display.all - display.status_line)
-plot(ohlcv.V          , color=volData.higherCol, style=plot.style_stepline_diamond, title='Total2', linewidth = 2,display = display.pane)
-plot(volData.higherVol, color=volData.higherCol, style=plot.style_columns, title='Higher Volume', display = display.all - display.status_line)
-plot(volData.lowerVol , color=volData.lowerCol , style=plot.style_columns, title='Lower Volume',display = display.all - display.status_line)
+// INFO TABLE
+var table info = table.new(position.top_right, 2, 7,
+     bgcolor=color.new(#0D1117, 10),
+     border_color=color.new(#30363D, 0), border_width=1)
 
-// Format percentages and volumes as strings before using in label text
-S(D,F)=>str.tostring(D,F)
-volStr              = S(math.sign(ta.change(ohlcv.C)) * ohlcv.V, FV)
-buyVolStr           = S(volData.buyVol   , FV )
-sellVolStr          = S(volData.sellVol  , FV )
-buyPercentStr       = S(volData.pcBuy    , FP )
-sellPercentStr      = S(volData.pcSell   , FP )
-totalbuyPercentC_   = volData.buyVol  / (volData.buyVol + volData.sellVol) * 100
-sup = not na(ohlcv.V)
+_c(col, row, txt, bg, tc) =>
+    table.cell(info, col, row, txt, bgcolor=bg, text_color=tc, text_size=size.small)
 
-if sup
-    TC = text.align_center
-    CW = color.white
-    // Create table and set header
-    var table tb = table.new(P_, 6, 6, bgcolor = na, frame_width = 2, frame_color = chart.fg_color, border_width = 1, border_color = CW)
+_c(0,0,"INDICATOR", color.new(#21262D,0), color.new(#8B949E,0))
+_c(1,0,"STATUS",    color.new(#21262D,0), color.new(#8B949E,0))
 
-    // Title
-    tb.cell(0, 0, text = 'Volume Candles', text_color = #FFBF00, bgcolor = #0E2841, text_halign = TC, text_valign = TC, text_size = sT)
-    tb.merge_cells(0, 0, 5, 0)
+_c(0,1,"UT Bot",    color.new(#161B22,0), color.white)
+_c(1,1, ut_bull_state ? "BULL" : "BEAR",
+     ut_bull_state ? color.new(#00C853,40) : color.new(#FF1744,40), color.white)
 
-    tb.cell(0, 1, text = 'Current Volume', text_color = CW, bgcolor = #0B3040, text_halign = TC, text_valign = TC, text_size = sT)
-    tb.merge_cells(0, 1, 1, 1)
+_c(0,2,"STC",       color.new(#161B22,0), color.white)
+_c(1,2, stc_bull ? "BULL" : "BEAR",
+     stc_bull ? color.new(#00C853,40) : color.new(#FF1744,40), color.white)
 
-    tb.cell(0, 2, text = 'Buy', text_color = #000000, bgcolor = #92D050, text_halign = TC, text_valign = TC, text_size = sT)
-    tb.cell(1, 2, text = 'Sell', text_color = #000000, bgcolor = #FF0000, text_halign = TC, text_valign = TC, text_size = sT)
+_c(0,3,"QQE",       color.new(#161B22,0), color.white)
+_c(1,3, qqe_tr == 1 ? "BULL" : "BEAR",
+     qqe_tr == 1 ? color.new(#00C853,40) : color.new(#FF1744,40), color.white)
 
-    tb.cell(0, 3, text = buyVolStr, text_color = CW, bgcolor = #074F69, text_halign = TC, text_valign = TC, text_size = sT)
-    tb.cell(1, 3, text = sellVolStr, text_color = CW, bgcolor = #074F69, text_halign = TC, text_valign = TC, text_size = sT)
+_c(0,4,"Supertrend", color.new(#161B22,0), color.white)
+_c(1,4, st_bull ? "BULL" : "BEAR",
+     st_bull ? color.new(#00C853,40) : color.new(#FF1744,40), color.white)
 
-    tb.cell(0, 5, text = 'Net: ' + volStr, text_color = CW, bgcolor = #074F69, text_halign = TC, text_valign = TC, text_size = sT)
-    tb.merge_cells(0, 5, 1, 5)
+_c(0,5,"ADX",       color.new(#161B22,0), color.white)
+_c(1,5, adx_ok ? str.tostring(math.round(adx_val)) + " OK" : str.tostring(math.round(adx_val)) + " WEAK",
+     adx_ok ? color.new(#00C853,40) : color.new(#FF6D00,40), color.white)
 
-    tb.cell(0, 4, text = buyPercentStr, text_color = CW, bgcolor = #074F69, text_halign = TC, text_valign = TC, text_size = sT)
-    tb.cell(1, 4, text = sellPercentStr, text_color = CW, bgcolor = #074F69, text_halign = TC, text_valign = TC, text_size = sT)
+_c(0,6,"VWAP",      color.new(#161B22,0), color.white)
+_c(1,6, close > vwap_val ? "ABOVE" : "BELOW",
+     close > vwap_val ? color.new(#00C853,40) : color.new(#FF1744,40), color.white)
 
-    //Fill the cell with color, setting 20 cells to 100% area. Then, loop according to the % volume of all trades.
-    cellCount = 20 // 4 columns x 5 rows = 20 cells
-    filledCells = 0
-    for r = 5 to 1 by 1
-        for c = 2 to 5 by 1
-            if filledCells < cellCount * (totalbuyPercentC_ / 100)
-                tb.cell(c, r, text = '', bgcolor = C_Up)
-            else
-                tb.cell(c, r, text = '', bgcolor = C_Down)
-            filledCells := filledCells + 1
-            filledCells
+// ALERTS
+alertcondition(BUY_SIGNAL,
+     title="VIVEK BUY",
+     message="BUY | {ticker} | {interval}min | Price: {close}")
 
-    if Label
-        sp = '               '
-        l = label.new(bar_index, ohlcv.V, 
-                      text=str.format('Net: {0}\nBuy: {1} ({2})\nSell: {3} ({4})\n{5}/\\\n {5}l\n {5}l', 
-                                      volStr, buyVolStr, buyPercentStr, sellVolStr, sellPercentStr, sp), 
-                      style=label.style_none, textcolor=volData.higherCol, size=sL, textalign=text.align_left)
-        if not History
-            (l[1]).delete()
+alertcondition(SELL_SIGNAL,
+     title="VIVEK SELL",
+     message="SELL | {ticker} | {interval}min | Price: {close}")
 
-//------------------------------------------
-// Draw volume levels on the candlesticks  | 
-//------------------------------------------
-// Define base and value for gradient candles
-float base  = na,float value = na
-bool uc = usecandle and sup 
-// Calculate base and value based on buy/sell volume and open/close relationship
-if volData.isBuyGreater
-    base  := math.min(ohlcv.O, ohlcv.C) // Start from the lower of open/close for buy
-    value := base + math.abs(ohlcv.O - ohlcv.C) * (volData.pcBuy  / 100) // Extend to the percentage of buy volume
-else
-    base  := math.max(ohlcv.O, ohlcv.C) // Start from the higher of open/close for sell
-    value := base - math.abs(ohlcv.O - ohlcv.C) * (volData.pcSell / 100) // Extend to the percentage of sell volume
-
-// Plot candles with gradient color
-barcolor(sup ? color.new(na, na)  :  ohlcv.C < ohlcv.O ? color.red : color.green,display = usecandle? display.all:display.none)
-UseC = uc ? volData.higherCol:color.new(na, na)
-//Body
-plotcandle(uc?base:na, uc?base:na, uc?value:na, uc?value:na,
-           title='Body', color=UseC, bordercolor=na, wickcolor=UseC, 
-           display = usecandle ? display.all - display.status_line : display.none, force_overlay=true,editable=false)
-//Candlestick edge
-plotcandle(uc?ohlcv.O:na, uc?ohlcv.H:na, uc?ohlcv.L:na, uc?ohlcv.C:na,
-           title='Fill', color=color.new(UseC,80), bordercolor=UseC, wickcolor=UseC,
-           display = usecandle ? display.all - display.status_line : display.none, force_overlay=true,editable=false)
-
-//------------------------------------------------------------
-// Plot the EMA and filter out the noise with volume control. | 
-//------------------------------------------------------------
-// Calculate EMAs
-float emaFast = ta.ema(ohlcv.C, emaFastLength)
-float emaSlow = ta.ema(ohlcv.C, emaSlowLength)
-bool signal = emaFast > emaSlow
-color c_signal = signal ? C_Up : C_Down
-// Calculate volume moving average
-float volumeMA = ta.sma(ohlcv.V, volumeConfirmationLength)
-// Determine crossover and crossunder conditions
-bool crossover = ta.crossover(emaFast, emaSlow)
-bool crossunder = ta.crossunder(emaFast, emaSlow)
-// Function to check for volume confirmation
-isVolumeConfirmed(source, length, ma) =>
-    math.sum(source > ma ? source : 0, length) >= math.sum(source < ma ? source : 0, length)
-    // Check for volume confirmation on crossover and crossunder
-
-bool ISV = isVolumeConfirmed(ohlcv.V, volumeConfirmationLength, volumeMA)
-bool crossoverConfirmed = crossover and (not useVolumeConfirmation or ISV)
-bool crossunderConfirmed = crossunder and (not useVolumeConfirmation or ISV)
-// Plot EMAs with fill based on gradient
-PF = MAV ? emaFast : na
-PS = MAV ? emaSlow : na
-p1 = plot(PF, color = c_signal, editable = false, force_overlay = true, display = display.pane)
-plot(PF, color = color.new(c_signal, 80), linewidth = 10, editable = false, force_overlay = true, display = display.pane)
-plot(PF, color = color.new(c_signal, 90), linewidth = 20, editable = false, force_overlay = true, display = display.pane)
-plot(PF, color = color.new(c_signal, 95), linewidth = 30, editable = false, force_overlay = true, display = display.pane)
-plot(PF, color = color.new(c_signal, 98), linewidth = 45, editable = false, force_overlay = true, display = display.pane)
-p2 = plot(PS, color = c_signal, editable = false, force_overlay = true, display = display.pane)
-plot(PS, color = color.new(c_signal, 80), linewidth = 10, editable = false, force_overlay = true, display = display.pane)
-plot(PS, color = color.new(c_signal, 90), linewidth = 20, editable = false, force_overlay = true, display = display.pane)
-plot(PS, color = color.new(c_signal, 95), linewidth = 30, editable = false, force_overlay = true, display = display.pane)
-plot(PS, color = color.new(c_signal, 98), linewidth = 45, editable = false, force_overlay = true, display = display.pane)
-
-// Fill area between EMAs based on crossover and volume confirmation
-fill(p1, p2, top_value=crossover ? emaFast : emaSlow,
-     bottom_value     =crossover ? emaSlow : emaFast,
-     top_color        =color.new(c_signal, 80),
-     bottom_color     =color.new(c_signal, 95)
-     )
-plotshape(crossoverConfirmed  and MAV, style=shape.triangleup  , location=location.belowbar, color=C_Up  , size=size.small, force_overlay=true,display =display.pane)
-plotshape(crossunderConfirmed and MAV, style=shape.triangledown, location=location.abovebar, color=C_Down, size=size.small, force_overlay=true,display =display.pane)
-
-//Alerts for confirmed crossovers
-string msg = '---------\n'+"Buy volume ="+buyVolStr+"\nBuy Percent = "+buyPercentStr+"\nSell volume = "+sellVolStr+"\nSell Percent = "+sellPercentStr+"\nNet = "+volStr+'\n---------'
-if crossoverConfirmed
-    alert("Price (" + str.tostring(close) + ") Crossed over  MA\n" + msg, alert_freq)
-if crossunderConfirmed
-    alert("Price (" + str.tostring(close) + ") Crossed under MA\n" + msg, alert_freq)
+alertcondition(BUY_SIGNAL or SELL_SIGNAL,
+     title="VIVEK Master Signal",
+     message="SIGNAL | {ticker} | {interval}min | Price: {close}")
