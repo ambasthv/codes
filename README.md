@@ -1,9 +1,15 @@
-valid_vars = cleaning_excels['ratio_sheet'][
-    cleaning_excels['ratio_sheet']['variable'].isin(df_id_bsd_select.columns)
-]
+so, this is the code i have that generates the charts, i want to add some code here to save all charts generated here in excel sheet, in seperate tabs with its respective chart name
 
-df_id_bsd = apply_cleaning(
-    df=df_id_bsd_select,
-    variable_cleaning=valid_vars,
-    null_treatment=True
-)
+lifestage_plot_datasets = {}
+
+for var in var_list2:
+    lifestage_plot_datasets[var] = plot_predicted_actual2(
+        df_id_bsd,
+        var,
+        'valid_def_ind_1yr',
+        num_buckets=10,
+        segment_var='lifestage_map2',
+        variable=var,
+        folder_name='Images',
+        plot_axis='log',
+        plot_ranges=False)
