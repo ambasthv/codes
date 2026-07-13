@@ -1,8 +1,13 @@
-import pyarrow.parquet as pq
+print("Quick_Ratio in dataframe:", 'Quick_Ratio' in df_id_bsd_select.columns)
 
-parquet_path = "your_file.parquet"  # Change to your file path
+print("\nColumns containing Quick:")
+print([c for c in df_id_bsd_select.columns if 'Quick' in c])
 
-# Get row count without loading full data
-row_count = pq.read_table(parquet_path).num_rows
-
-print(f"Total rows in parquet file: {row_count:,}")
+print("\nRows in cleaning sheet containing Quick:")
+print(
+    cleaning_excels['ratio_sheet'][
+        cleaning_excels['ratio_sheet'].astype(str)
+        .apply(lambda x: x.str.contains('Quick', case=False, na=False))
+        .any(axis=1)
+    ]
+)
