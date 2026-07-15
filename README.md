@@ -1,15 +1,8 @@
-so, this is the code i have that generates the charts, i want to add some code here to save all charts generated here in excel sheet, in seperate tabs with its respective chart name
-
-lifestage_plot_datasets = {}
-
-for var in var_list2:
-    lifestage_plot_datasets[var] = plot_predicted_actual2(
-        df_id_bsd,
-        var,
-        'valid_def_ind_1yr',
-        num_buckets=10,
-        segment_var='lifestage_map2',
-        variable=var,
-        folder_name='Images',
-        plot_axis='log',
-        plot_ranges=False)
+Hi, I’m Vivek Ambastha — a Senior Credit Risk Manager with extensive hands-on experience in PD/LGD modeling, model monitoring (GINI, KS, PSI), stress testing, overrides, and regulatory reporting.
+What makes my teaching different and unique:
+•  Industry-First Approach: I don’t just teach theory from books. You’ll work on real-world credit risk models, Excel prototypes, and Python dashboards that I actually use in my job at a leading financial institution.
+•  Practical + Career Focused: Every session combines concepts with live coding, custom dummy datasets, breach detection logic, and career insights — exactly what banks and analysts look for in interviews and day-to-day work.
+•  Interactive Tools: Learn through custom Streamlit apps, Plotly visualizations, and automated monitoring scripts that make complex topics (like ECL, geopolitical stress testing, and model validation) intuitive and memorable.
+•  Personalized & Result-Oriented: Whether you’re preparing for FRM, ICRM, university exams, or switching to a risk analytics role, I tailor sessions to your goals and current level — with clear, step-by-step guidance and ongoing support.
+My students don’t just pass exams — they build confidence and practical skills that help them stand out in their careers.
+Ready to learn credit risk, financial modeling, and Python the way professionals actually do it? Let’s connect and create a learning plan that works for you.”
