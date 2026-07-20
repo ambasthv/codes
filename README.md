@@ -1,439 +1,126 @@
-//@version=6
+//@version=5
+indicator("Nifty Intraday AI Pro v1.0 - Vivek's Dashboard", shorttitle="AI Intraday Pro", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
 
-//=============================================================================
-// AI INTRADAY PRO V2
-//=============================================================================
-//
-// Version      : 0.01
-// Author       : Vivek & ChatGPT
-// Pine Version : v6
-//
-// Description:
-// Professional Intraday Trading System
-// Optimized for:
-//     • Nifty 50
-//     • Bank Nifty
-//     • 5 Minute Charts
-//
-// Current Version:
-//     Project Structure Only
-//
-//=============================================================================
+// ==================== INPUTS ====================
+groupCore     = "Core Settings"
+groupST       = "Supertrend"
+groupDashboard= "Dashboard"
 
-strategy(
-     title="AI Intraday Pro v2",
-     shorttitle="AIP v2",
-     overlay=true,
-     initial_capital=100000,
-     pyramiding=0,
-     commission_type=strategy.commission.percent,
-     commission_value=0.03,
-     default_qty_type=strategy.percent_of_equity,
-     default_qty_value=100,
-     process_orders_on_close=true)
-
-//=============================================================================
-// VERSION INFORMATION
-//=============================================================================
-
-var string VERSION = "0.01"
-
-//=============================================================================
-// INPUT GROUPS
-//=============================================================================
-
-groupGeneral      = "General Settings"
-groupSupertrend  = "Supertrend"
-groupTrend       = "Trend Filters"
-groupMomentum    = "Momentum"
-groupVolume      = "Volume"
-groupRisk        = "Risk Management"
-groupDashboard   = "Dashboard"
-groupMTF         = "Multi Timeframe"
-groupSession     = "Trading Session"
-groupAdvanced    = "Advanced"
-
-//=============================================================================
-// GENERAL SETTINGS
-//=============================================================================
-
-mode = input.string(
-     "Auto",
-     "Trading Mode",
-     options=[
-     "Auto",
-     "Safe",
-     "Aggressive",
-     "Scalper"],
-     group=groupGeneral)
-
-showDashboard =
-     input.bool(
-     true,
-     "Show Dashboard",
-     group=groupDashboard)
-
-showLabels =
-     input.bool(
-     true,
-     "Show Buy/Sell Labels",
-     group=groupDashboard)
-
-showBackground =
-     input.bool(
-     true,
-     "Background Color",
-     group=groupDashboard)
-
-//=============================================================================
-// PLACE HOLDERS
-//=============================================================================
+mode = input.string("Safe", "Trading Mode", options=["Safe", "Aggressive"], group=groupCore)
+showDashboard = input.bool(true, "Show Dashboard", group=groupDashboard)
 
 // Supertrend
+stATRPeriod = input.int(10, "Supertrend ATR Length", minval=1, group=groupST)
+stFactor    = input.float(3.0, "Supertrend Factor", step=0.1, group=groupST)
 
-float supertrend = na
-int trendDirection = 0
+// ==================== CORE INDICATORS ====================
+ema20 = ta.ema(close, 20)
+ema50 = ta.ema(close, 50)
+dma200 = request.security(syminfo.tickerid, "D", ta.ema(close, 200))
 
-// EMA
+vwapValue = ta.vwap(hlc3)
+atrValue = ta.atr(14)
+rsiValue = ta.rsi(close, 14)
 
-float ema20 = na
-float ema50 = na
+[macdLine, signalLine, hist] = ta.macd(close, 12, 26, 9)
 
-// DMA
+// Relative Volume (simple approximation)
+relVol = volume / ta.sma(volume, 20)
 
-float dma200 = na
+// Supertrend
+[supertrend, direction] = ta.supertrend(stFactor, stATRPeriod)
+stBull = direction < 0
+stBear = direction > 0
 
-// VWAP
+// ==================== MARKET STRUCTURE ====================
+swingHigh = ta.pivothigh(high, 5, 5)
+swingLow  = ta.pivotlow(low, 5, 5)
 
-float vwapValue = na
+var float lastSwingHigh = na
+var float lastSwingLow  = na
 
-// RSI
+if not na(swingHigh)
+    lastSwingHigh := swingHigh
+if not na(swingLow)
+    lastSwingLow := swingLow
 
-float rsi = na
+higherHigh = high > nz(lastSwingHigh[1])
+lowerLow   = low < nz(lastSwingLow[1])
 
-// ATR
+// ==================== CONFIDENCE ENGINE ====================
+trendScore   = stBull ? 85 : stBear ? 15 : 50
+momentumScore = rsiValue > 60 ? 80 : rsiValue < 40 ? 20 : 50
+volumeScore   = relVol > 1.5 ? 80 : relVol > 1.0 ? 60 : 30
+vwapScore     = close > vwapValue ? 70 : 30
+atrScore      = atrValue > ta.sma(atrValue, 20) ? 65 : 45
 
-float atr = na
+buyConfidence  = math.round((trendScore + momentumScore + volumeScore + vwapScore + atrScore) / 5 * (mode == "Aggressive" ? 1.15 : 1.0))
+sellConfidence = math.round(100 - buyConfidence * 0.95)  // Slight asymmetry
 
-// ADX
+buyerPressure = (close > open ? volume : 0) / (volume + 1)
+sellerPressure = 1 - buyerPressure
 
-float adx = na
+// Market Regime
+isTrending = math.abs(ta.slope(ta.sma(close, 20), 5)) > atrValue * 0.5
+regime = isTrending ? (stBull ? "Strong Bull" : "Bear Trend") : "Sideways"
 
-// Volume
+// ==================== SIGNALS ====================
+buyReady     = stBull and close > ema20 and rsiValue > 50
+buyConfirmed = buyReady and ta.crossover(close, supertrend)
 
-float relativeVolume = na
+sellReady     = stBear and close < ema20 and rsiValue < 50
+sellConfirmed = sellReady and ta.crossunder(close, supertrend)
 
-// Confidence
+// Early Entry (Aggressive mode)
+earlyBuy  = mode == "Aggressive" and buyReady and not buyConfirmed
+earlySell = mode == "Aggressive" and sellReady and not sellConfirmed
 
-float buyScore = na
-float sellScore = na
+// ==================== PLOTS ====================
+plot(ema20, "EMA 20", color=color.blue)
+plot(ema50, "EMA 50", color=color.orange)
+plot(dma200, "200 DMA", color=color.purple, linewidth=2)
 
-// Market State
+plot(vwapValue, "VWAP", color=color.yellow, linewidth=2)
 
-string marketState = "Unknown"
+plot(showSupertrend ? supertrend : na, "Supertrend", color=stBull ? color.lime : color.red, linewidth=3, style=plot.style_linebr)
 
-//=============================================================================
-// COLORS
-//=============================================================================
+bgcolor(stBull ? color.new(color.green, 92) : stBear ? color.new(color.red, 92) : na)
 
-bullColor = color.new(color.lime,0)
-bearColor = color.new(color.red,0)
-neutralColor = color.new(color.orange,0)
-bgBull = color.new(color.green,90)
-bgBear = color.new(color.red,90)
+// Labels
+if buyConfirmed
+    label.new(bar_index, low, "BUY\nCONFIRMED", color=color.green, style=label.style_label_up, textcolor=color.white)
 
-//=============================================================================
-// FUNCTIONS
-//=============================================================================
+if sellConfirmed
+    label.new(bar_index, high, "SELL\nCONFIRMED", color=color.red, style=label.style_label_down, textcolor=color.white)
 
-// Future helper functions will be added here.
+// ==================== PROFESSIONAL DASHBOARD ====================
+var table dash = table.new(position.top_right, 2, 10, bgcolor=color.new(color.black, 80), border_width=1)
 
-//=============================================================================
-// INDICATORS
-//=============================================================================
+if barstate.islast
+    table.cell(dash, 0, 0, "BUY Conf",  text_color=color.white)
+    table.cell(dash, 1, 0, str.tostring(buyConfidence) + "%",  text_color=buyConfidence > 70 ? color.lime : color.yellow)
 
-//=============================================================================
-// INDICATORS
-//=============================================================================
+    table.cell(dash, 0, 1, "SELL Conf", text_color=color.white)
+    table.cell(dash, 1, 1, str.tostring(sellConfidence) + "%", text_color=sellConfidence > 70 ? color.red : color.orange)
 
-//--------------------------------------------------
-// Moving Averages
-//--------------------------------------------------
+    table.cell(dash, 0, 2, "Regime", text_color=color.white)
+    table.cell(dash, 1, 2, regime, text_color=stBull ? color.lime : stBear ? color.red : color.gray)
 
-ema20 := ta.ema(close,20)
-ema50 := ta.ema(close,50)
+    table.cell(dash, 0, 3, "Buyers", text_color=color.white)
+    table.cell(dash, 1, 3, str.tostring(math.round(buyerPressure*100)) + "%", text_color=color.lime)
 
-dma200 := request.security(
-     syminfo.tickerid,
-     "D",
-     ta.sma(close,200))
+    table.cell(dash, 0, 4, "Sellers", text_color=color.white)
+    table.cell(dash, 1, 4, str.tostring(math.round(sellerPressure*100)) + "%", text_color=color.red)
 
-plot(
-     ema20,
-     title="EMA 20",
-     color=color.aqua,
-     linewidth=2)
+    table.cell(dash, 0, 5, "Expected Move", text_color=color.white)
+    table.cell(dash, 1, 5, str.tostring(math.round(2.5 * atrValue, 1)) + " pts", text_color=color.aqua)
 
-plot(
-     ema50,
-     title="EMA 50",
-     color=color.orange,
-     linewidth=2)
+    table.cell(dash, 0, 6, "Mode", text_color=color.white)
+    table.cell(dash, 1, 6, mode, text_color=mode=="Safe" ? color.blue : color.fuchsia)
 
-plot(
-     dma200,
-     title="200 DMA",
-     color=color.white,
-     linewidth=3)
+// ==================== ALERTS ====================
+if buyConfirmed
+    alert("Nifty BUY CONFIRMED - Confidence: " + str.tostring(buyConfidence) + "%", alert.freq_once_per_bar)
 
-//--------------------------------------------------
-// VWAP
-//--------------------------------------------------
-
-vwapValue := ta.vwap(close)
-
-plot(
-     vwapValue,
-     title="VWAP",
-     color=color.yellow,
-     linewidth=2)
-
-//--------------------------------------------------
-// ATR
-//--------------------------------------------------
-
-atr := ta.atr(14)
-
-//--------------------------------------------------
-// RSI
-//--------------------------------------------------
-
-rsi := ta.rsi(close,14)
-
-//--------------------------------------------------
-// MACD
-//--------------------------------------------------
-
-[macdLine, signalLine, histogram] = ta.macd(close, 12, 26, 9)
-
-//--------------------------------------------------
-// RELATIVE VOLUME
-//--------------------------------------------------
-
-volLength = input.int(20, "Relative Volume Length", group=groupVolume)
-
-volMA = ta.sma(volume, volLength)
-relativeVolume := volMA > 0 ? volume / volMA : 1.0
-
-//--------------------------------------------------
-// TREND STATE
-//--------------------------------------------------
-
-bool bullishTrend =
-     close > ema20 and
-     ema20 > ema50 and
-     ema50 > dma200
-
-bool bearishTrend =
-     close < ema20 and
-     ema20 < ema50 and
-     ema50 < dma200
-
-marketState :=
-     bullishTrend ? "Bullish" :
-     bearishTrend ? "Bearish" :
-     "Sideways"
-
-//--------------------------------------------------
-// ATR INFORMATION
-//--------------------------------------------------
-
-atrPercent = atr / close * 100
-
-//--------------------------------------------------
-// MACD INFORMATION
-//--------------------------------------------------
-
-macdBull = macdLine > signalLine
-macdBear = macdLine < signalLine
-
-//--------------------------------------------------
-// MOMENTUM SCORE
-//--------------------------------------------------
-
-int momentumScore = 0
-
-if rsi > 60
-    momentumScore += 1
-
-if macdBull
-    momentumScore += 1
-
-if relativeVolume > 1.20
-    momentumScore += 1
-
-trendStrength =
-     momentumScore == 3 ? "Strong" :
-     momentumScore == 2 ? "Medium" :
-     momentumScore == 1 ? "Weak" :
-     "Poor"
-//=============================================================================
-// MARKET REGIME ENGINE
-//=============================================================================
-
-// Future version
-
-//=============================================================================
-// BUY ENGINE
-//=============================================================================
-
-// Future version
-
-//=============================================================================
-// SELL ENGINE
-//=============================================================================
-
-// Future version
-
-//=============================================================================
-// RISK ENGINE
-//=============================================================================
-
-// Future version
-
-//=============================================================================
-// STRATEGY EXECUTION
-//=============================================================================
-
-// Future version
-
-//=============================================================================
-// DASHBOARD
-//=============================================================================
-
-if barstate.islast and showDashboard
-
-    var table dashboard =
-         table.new(
-         position.top_right,
-         2,
-         8,
-         border_width=1)
-
-    table.cell(
-         dashboard,
-         0,
-         0,
-         "AI Intraday Pro")
-
-    table.cell(
-         dashboard,
-         1,
-         0,
-         "v"+VERSION)
-
-    table.cell(
-         dashboard,
-         0,
-         1,
-         "Mode")
-
-    table.cell(
-         dashboard,
-         1,
-         1,
-         mode)
-
-    table.cell(
-         dashboard,
-         0,
-         2,
-         "Market")
-
-    table.cell(
-     dashboard,
-     1,
-     2,
-     marketState,
-     text_color =
-          bullishTrend ? color.lime :
-          bearishTrend ? color.red :
-          color.orange)
-
-    table.cell(
-         dashboard,
-         0,
-         3,
-         "Buy Score")
-
-    table.cell(
-         dashboard,
-         1,
-         3,
-         "--")
-
-    table.cell(
-         dashboard,
-         0,
-         4,
-         "Sell Score")
-
-    table.cell(
-         dashboard,
-         1,
-         4,
-         "--")
-
-    table.cell(
-         dashboard,
-         0,
-         5,
-         "Trend")
-
-    table.cell(
-     dashboard,
-     1,
-     5,
-     trendStrength,
-     text_color =
-          momentumScore == 3 ? color.lime :
-          momentumScore == 2 ? color.green :
-          momentumScore == 1 ? color.orange :
-          color.red)
-
-    table.cell(
-         dashboard,
-         0,
-         6,
-         "Momentum")
-
-    table.cell(
-     dashboard,
-     1,
-     6,
-     "RSI " +
-     str.tostring(math.round(rsi)) +
-     " | RV " +
-     str.tostring(relativeVolume, "#.##"))
-
-    table.cell(
-         dashboard,
-         0,
-         7,
-         "Version")
-
-    table.cell(
-         dashboard,
-         1,
-         7,
-         VERSION)
-
-//=============================================================================
-// ALERTS
-//=============================================================================
-
-// Future Version
-
-//=============================================================================
-// END OF FILE
-//=============================================================================
+if sellConfirmed
+    alert("Nifty SELL CONFIRMED - Confidence: " + str.tostring(sellConfidence) + "%", alert.freq_once_per_bar)
