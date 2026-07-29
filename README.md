@@ -1,4 +1,7 @@
-Credit risk professional with 10+ years of experience specializing in PD/LGD modeling, model monitoring (GINI, KS, PSI, override & breach detection), stress testing, and regulatory frameworks.
-Currently contributing to credit risk modeling and analytics at First Citizens India, with hands-on work across model development, ongoing monitoring, and portfolio risk insights. Strong practitioner of Python (including Streamlit for interactive risk dashboards) alongside traditional statistical techniques.
-Experienced in translating complex model outputs into actionable business and risk decisions while maintaining strong governance and documentation standards.
-Continuously building depth in quantitative risk, regulatory stress testing, and data-driven risk tools. Open to connecting with professionals in credit risk, model risk, and analytics roles at global banks and MNCs.
+• Designed and implemented a dual risk rating framework combining quantitative models and qualitative SME insights to assess credit risk across portfolios of $5–15M, $15–75M, and >$75M revenue.
+• Developed technical specifications for risk rating systems and automated data processing using Python, SQL, and Excel VBA in collaboration with the Model Risk Management team, improving accuracy and efficiency.
+• Partnered with IT and data science teams to integrate risk models into enterprise platforms while ensuring full compliance with Basel III and IFRS 9 requirements.
+• Created comprehensive documentation covering system architecture, data flows, and algorithmic logic to support scalability, auditability, and regulatory reviews.
+• Analyzed large datasets with statistical techniques and machine learning libraries (Pandas, Scikit-learn) to identify key risk drivers, model factors, and emerging portfolio trends.
+• Built Tableau dashboards delivering real-time risk insights and performance metrics to senior management and key stakeholders.
+• Mentored a team of 6 analysts, driving a data-driven culture and upskilling the team on technical tools and credit risk best practices.
