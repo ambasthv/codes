@@ -1,7 +1,8 @@
-• Designed and implemented a dual risk rating framework combining quantitative models and qualitative SME insights to assess credit risk across portfolios of $5–15M, $15–75M, and >$75M revenue.
-• Developed technical specifications for risk rating systems and automated data processing using Python, SQL, and Excel VBA in collaboration with the Model Risk Management team, improving accuracy and efficiency.
-• Partnered with IT and data science teams to integrate risk models into enterprise platforms while ensuring full compliance with Basel III and IFRS 9 requirements.
-• Created comprehensive documentation covering system architecture, data flows, and algorithmic logic to support scalability, auditability, and regulatory reviews.
-• Analyzed large datasets with statistical techniques and machine learning libraries (Pandas, Scikit-learn) to identify key risk drivers, model factors, and emerging portfolio trends.
-• Built Tableau dashboards delivering real-time risk insights and performance metrics to senior management and key stakeholders.
-• Mentored a team of 6 analysts, driving a data-driven culture and upskilling the team on technical tools and credit risk best practices.
+Dear Hiring Manager,
+I am writing to express my interest in the [Role Title] position. With over a decade of experience in credit risk management, I specialize in designing robust risk rating frameworks, developing quantitative models, and embedding strong model governance practices aligned with Basel III and IFRS 9.
+In my current role, I led the design and implementation of a dual risk rating framework that combined quantitative models with qualitative SME insights. This strengthened credit decision-making across portfolios ranging from $5–15 million to over $75 million in revenue. I also drove the development of technical specifications and automated risk assessment workflows using Python, SQL, and Excel VBA in collaboration with the Model Risk Management team, improving both accuracy and efficiency.
+I have worked closely with IT and data science teams to integrate risk models into enterprise platforms while ensuring regulatory compliance. I established clear documentation of system architecture, data flows, and model logic to support scalability and audit readiness. Additionally, I applied statistical techniques and machine learning tools (Pandas, Scikit-learn) to large datasets to identify key risk drivers and portfolio trends, and designed Tableau dashboards that delivered real-time insights to senior leadership. I also mentored a team of six analysts, building stronger quantitative capabilities and fostering a data-driven risk culture.
+I am particularly interested in contributing to high-quality model development, monitoring, and risk decision frameworks at a global organization. I would welcome the opportunity to discuss how my experience aligns with the requirements of this role.
+Thank you for your time and consideration. I look forward to the possibility of speaking with you.
+Best regards,
+Vivek Ambastha
