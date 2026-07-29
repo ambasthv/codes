@@ -1,13 +1,9 @@
-here is the job desctiption, write cover letter sa per this, dont just copy paste whats written here, but moulde my cover letter to best fit this JD
-Responsible for the development, implementation and maintenance of credit scoring models/assessment tools, strategies and capital estimate modeling of PD, LGD and EAD that apply to retail portfolios across life cycle
-Monitor, Document and communicate the functionality of credit risk methods & models to various stakeholders
-Provide recommendations to update the model based on latest data and analysis
-Prepare / support Basel team on regulatory reports relating to retail credit portfolio in line with internal & regulatory requirement
-Assist in implementation of IFRS 9, development of Basel models for the entire retail portfolio
-Deploy the models on rating system and work with IT for effective maintenance of the scoring related information
-Identify analytical opportunity across credit life cycle - Acquisition, Portfolio Management and Collection
-Required to develop data-driven analytics to monitor the asset quality and minimize the credit risk of retail portfolio
-Carry out analytical projects together with policy when credit events warrant as required
-Ensure timely communication of scorecard monitoring and validation along with insights and recommendation
-Contribution to the formulation of a successful growing team
-Perform other duties as assigned
+Dear Hiring Manager,
+I am writing to express my strong interest in the credit scoring and capital modeling role focused on retail portfolios. With extensive experience in developing and implementing credit risk frameworks, model monitoring, and regulatory-aligned analytics, I am well-positioned to contribute to the development, maintenance, and ongoing enhancement of PD, LGD, and EAD models across the credit life cycle.
+In my current role, I led the design and implementation of a dual risk rating framework that integrated quantitative models with qualitative insights to support robust credit decision-making. I developed technical specifications and automated key processes using Python, SQL, and Excel VBA in close collaboration with the Model Risk Management team, improving both model accuracy and operational efficiency. I have also partnered with IT and data science teams to deploy and maintain risk models within enterprise systems while ensuring alignment with Basel and IFRS 9 requirements.
+A significant part of my work involves monitoring model performance, documenting methodology and logic, and communicating insights and recommendations to stakeholders. I regularly analyze large datasets using statistical techniques and machine learning tools (including Pandas and Scikit-learn) to identify risk drivers and recommend model updates based on the latest data. I have designed Tableau dashboards that deliver timely, actionable insights on portfolio risk to senior management, supporting informed decision-making across acquisition, portfolio management, and related stages of the credit life cycle.
+I have supported regulatory reporting requirements and contributed to the documentation and governance needed for auditability and compliance. Additionally, I have mentored a team of six analysts, helping build stronger quantitative capabilities and a data-driven culture—experience I would bring to supporting and growing a high-performing modeling team.
+I am particularly motivated by the opportunity to work on end-to-end retail credit scoring models, capital estimation (PD/LGD/EAD), ongoing validation and monitoring, and close collaboration with policy, Basel, and IT stakeholders. I would welcome the chance to discuss how my background can support your team’s objectives.
+Thank you for your time and consideration. I look forward to the possibility of speaking with you.
+Best regards,
+Vivek Ambastha
