@@ -6,14 +6,14 @@ Additionally, it is important to note that the plots rely on rough decile bands 
 
 As such, the bands where a cap or floor are being selected can be relatively wide, at which point a rounded number within the band is selected for the cap or floor.
 
-The next variable assessed is (Operating Profits+Selling Expense)/Total Assets, as seen in the Figure below:
+The next variable assessed is Profit Before Extraordinary Items/Operating Expenses, as seen in the Figure below:
 
-Figure: (Operating Profits+Selling Expense)/Total Assets Bivariate Plot incl. Cap and Floor
+Figure: Profit Before Extraordinary Items/Operating Expenses Bivariate Plot incl. Cap and Floor
 
-As observed in the figure above, there is a relatively consistent decrease in default rate as (Operating Profits+Selling Expense)/Total Assets increases, with the most significant reduction in default rate observed from the lower end of the variable through approximately -0.47. Beyond this point, the actual default rate continues to decrease, although the relationship becomes considerably less pronounced and more variable at the higher values of the variable.
+As observed in the figure above, there is a relatively consistent decrease in default rate as Profit Before Extraordinary Items/Operating Expenses increases, with the most significant reduction in default rate observed from approximately -1.39 to -0.48. Beyond approximately -0.48, the actual default rate remains relatively low and becomes more variable, with no clear evidence of a continued decrease in default rate.
 
-Any obligor with a value below -0.60 would be considered to be at the riskiest level, given the substantially higher default rates observed at the lower end of the distribution. The same logic is applied to the less risky bucket for obligors above approximately 0.35, where the actual default rate is relatively low and exhibits some degree of noise without a clear additional reduction in risk.
+Any obligor with a value below approximately -0.63 would be considered to be at the riskiest level, given the substantially higher default rates observed at the lower end of the distribution. The same logic is applied to the less risky bucket for obligors above approximately 0.01, where the actual default rate remains relatively low and exhibits some degree of noise without a clear additional reduction in risk.
 
-Ultimately, within the relevant bands, a floor of -0.60 and a cap of 0.35 were selected as the lower and upper bounds of the variable.
+Ultimately, within the relevant buckets, a floor of -0.63 and a cap of 0.01 were selected as the lower and upper bounds of the variable.
 
-As such, the cap and floor for the variable were established at 0.35 and -0.60, respectively. These caps and floors are reflected on the dark blue line in the figure above and we can observe that it captures the general decreasing trend of the behavior observed in the actuals (light blue line) while reducing the noise around the edges.
+As such, the cap and floor for the variable were established at 0.01 and -0.63, respectively. These caps and floors are reflected on the dark blue line in the figure above and we can observe that it captures the general decreasing trend of the behavior observed in the actuals (light blue line) while reducing the noise around the edges.
