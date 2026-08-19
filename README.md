@@ -1,15 +1,16 @@
+from pathlib import Path
+import matplotlib.pyplot as plt
 
-print("Current working directory:")
-print(os.getcwd())
+style_file = Path(
+    r"C:\Vivek Ambastha\Dev\dev-id-bsd-model\01. Code\model_development\utils\resources\ow_style.mplstyle"
+)
 
-print("\nPROJECT_ROOT:")
-print(PROJECT_ROOT)
+print("Style file:")
+print(style_file)
 
-print("\nCODE_ROOT:")
-print(CODE_ROOT)
+print("Does it exist?")
+print(style_file.exists())
 
-print("\nStyle file:")
-print(CODE_ROOT / "model_development" / "utils" / "resources" / "ow_style.mplstyle")
+plt.style.use(str(style_file))
 
-print("\nStyle file exists:")
-print((CODE_ROOT / "model_development" / "utils" / "resources" / "ow_style.mplstyle").exists())
+print("STYLE LOADED SUCCESSFULLY")
