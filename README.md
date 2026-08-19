@@ -1,34 +1,139 @@
-error is 
+# ============================================================
+# Load config and database path
+# ============================================================
 
----------------------------------------------------------------------------
-FileNotFoundError                         Traceback (most recent call last)
-File ~\AppData\Roaming\Python\Python312\site-packages\matplotlib\style\__init__.py:130, in use(style)
-    129 try:
---> 130     style = rc_params_from_file(style, use_default_template=False)
-    131 except OSError as err:
+import os
+import sys
+from pathlib import Path
 
-File ~\AppData\Roaming\Python\Python312\site-packages\matplotlib\__init__.py:968, in rc_params_from_file(fname, fail_on_error, use_default_template)
-    954 """
-    955 Construct a `RcParams` from file *fname*.
-    956 
-   (...)
-    966     parameters specified in the file. (Useful for updating dicts.)
-    967 """
---> 968 config_from_file = _rc_params_in_file(fname, fail_on_error=fail_on_error)
-    970 if not use_default_template:
+# ------------------------------------------------------------
+# Find project root
+# ------------------------------------------------------------
 
-File ~\AppData\Roaming\Python\Python312\site-packages\matplotlib\__init__.py:900, in _rc_params_in_file(fname, transform, fail_on_error)
-    899 rc_temp = {}
---> 900 with _open_file_or_url(fname) as fd:
-    901     try:
+PROJECT_ROOT = Path.cwd()
 
-File c:\Program Files\Anaconda3_2024_10_1\Lib\contextlib.py:137, in _GeneratorContextManager.__enter__(self)
-    136 try:
---> 137     return next(self.gen)
-...
-    135             f"styles are listed in `style.available`)") from err
-    136 filtered = {}
-    137 for k in style:  # don't trigger RcParams.__getitem__('backend')
+while (
+    not (PROJECT_ROOT / "01. Code").exists()
+    and PROJECT_ROOT != PROJECT_ROOT.parent
+):
+    PROJECT_ROOT = PROJECT_ROOT.parent
 
-OSError: 'C:/Users/ZRR28/Dev/dev-id-bsd-model/01. Code/model_development/utils/resources/ow_style.mplstyle' is not a valid package style, path of style file, URL of style file, or library style name (library styles are listed in `style.available`)
-Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
+# Path to 01. Code
+CODE_ROOT = PROJECT_ROOT / "01. Code"
+
+# Add 01. Code to Python path
+if str(CODE_ROOT) not in sys.path:
+    sys.path.insert(0, str(CODE_ROOT))
+
+# Display paths for verification
+print("Project root:", PROJECT_ROOT)
+print("Code root:", CODE_ROOT)
+
+
+# ------------------------------------------------------------
+# Load config and database path
+# ------------------------------------------------------------
+
+from src.config import db_path
+
+
+# ============================================================
+# General Python Imports
+# ============================================================
+
+import pandas as pd
+import numpy as np
+import scipy as sc
+from sklearn import linear_model
+import statsmodels.api as sm
+import openpyxl
+
+from warnings import simplefilter
+simplefilter(action="ignore", category=Warning)
+
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+import datetime
+
+
+# ============================================================
+# Pandas formatting
+# ============================================================
+
+pd.options.display.float_format = '{:,.4f}'.format
+
+
+# ============================================================
+# Import configuration / SFA functions
+# ============================================================
+
+from model_development.utils.classification import single_factor_analysis
+
+from model_development.core.sfa import (
+    define_inputs as define_inputs,
+    sfa_setup as sfa_setup,
+    run_sfa as run_sfa,
+    sfa_prelim_tagging,
+    apply_null_inf_tagging,
+    apply_categorization,
+    apply_selection_criteria,
+)
+
+
+# ============================================================
+# Import IDBSD ratios
+# ============================================================
+
+from model_development.ratios.ratios_IDBSD import (
+    ratios as ratios_IDBSD,
+    var_categories as var_cats_IDBSD
+)
+
+
+# ============================================================
+# Import MFA functions
+# ============================================================
+
+from model_development.core.mfa_preprocessing import (
+    setup_mfa
+)
+
+from model_development.core.MFA_functions import (
+    input_alt_vars,
+    evaluate_model
+)
+
+
+# ============================================================
+# Load OW colour scheme and plot style
+# ============================================================
+
+STYLE_FILE = (
+    CODE_ROOT
+    / "model_development"
+    / "utils"
+    / "resources"
+    / "ow_style.mplstyle"
+)
+
+print("Style file:", STYLE_FILE)
+print("Style file exists:", STYLE_FILE.exists())
+
+plt.style.use(str(STYLE_FILE))
+
+
+# ============================================================
+# Timestamp
+# ============================================================
+
+timestamp = datetime.datetime.now().strftime('%Y%m%d')
+print(timestamp)
+
+
+# ============================================================
+# Automatically update custom Python scripts
+# ============================================================
+
+%load_ext autoreload
+%autoreload 2
