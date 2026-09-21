@@ -1,122 +1,6 @@
-# %%
-# ### Importing libraries to be used for getting data and KPI calculations
-
-
-import pandas as pd
-import numpy as np
-pd.options.display.float_format = '{:.3f}'.format
-pd.set_option('display.max_columns',None)
-
-import pyodbc
-
-import os
-#print(os.getcwd())
-
-import warnings
-warnings.filterwarnings('ignore')
-
-import gc
-
-from datetime import datetime
-from datetime import date 
-from dateutil.relativedelta import relativedelta 
-import timeit
-
-from sklearn.metrics import log_loss, roc_auc_score, recall_score, precision_score
-from sklearn.metrics import average_precision_score, f1_score, classification_report
-from sklearn.metrics import accuracy_score
-
-from sklearn.metrics import roc_curve
-from warnings import filterwarnings
-
-filterwarnings("ignore", category=UserWarning, message='.*pandas only supports SQLAlchemy connectable.*')
-start = datetime.now()
-#print(start)
-
-
-
-# %%
-def month_to_quarter (month):
-    if month in [1,2,3]:
-        return 'Q1'
-    elif month in [4,5,6]:
-        return 'Q2'
-    elif month in [7,8,9]:
-        return 'Q3'
-    else: return 'Q4'
-
-# %%
-
-
-current_date = date.today()
-month_end = current_date + relativedelta(day=31)
-last_month_end = month_end - relativedelta(months = 0)
-last_month_end = last_month_end + pd.offsets.MonthEnd(n=-1)
-year = last_month_end.strftime("_%Y")
-last_month_end1 = last_month_end.strftime("%m/%d/%Y")
-
-month_end_3m_prior = month_end -relativedelta(months=4)
-
-month_end_3m_prior = month_end_3m_prior + pd.offsets.MonthEnd(n=0)
-month_end_3m_prior = month_end_3m_prior.strftime("%m/%d/%Y")
-
-month_end_12m_prior = month_end - relativedelta(months=13)
-
-month_end_12m_prior = month_end_12m_prior + pd.offsets.MonthEnd(n=0)
-month_end_12m_prior = month_end_12m_prior.strftime("%m/%d/%Y")
-
-last_month = last_month_end.month
-kpi_quarter = month_to_quarter(last_month)
-
-
-
-eval_dates = [month_end_3m_prior, last_month_end1  ]
-
-model_name = ['Innovation Large Corp', 'Innovation Mid Size', 'Innovation Early Stage', 'GFB CCLOC', 'GFB NAV', 'GFB Firm']
-
-
-# %%
-print(last_month_end1, month_end_3m_prior)
-
-# %%
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SQLAG-CRDMPRD-L.CORP.SVBANK.COM,1433;'
-                      'Database=CRDADMANALYSIS;'
-                      'Schema=dbo'
-                      'Trusted_Connection=yes;')
-
-
-conn2 = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SQLAG-CRDMPRD-L.CORP.SVBANK.COM,1433;'
-                      'Database=CRDADMPRD;'
-                      'Schema=dbo'
-                      'Trusted_Connection=yes;')
-
-#Step 1
-# Connection to sql server
-#password = cyberArk_automation_v1.main()
-#conn = pyodbc.connect('Driver={ODBC Driver 18 for SQL Server};'
-                      #'Server=10.108.24.101,1436;'
-                      #'Server=10.108.24.61,1435;'
-                      #'Database=CRDADMANALYSIS;'
-                      #'UID=svc.cdmdrr;'
-                      #'PWD='+password+';'
-                      #'Schema=dbo;'
-                      #'TrustServerCertificate=yes;')
-
-
-
-# %%
-sql_balance = """
-
-
-
 SELECT Supplementary_Data.*, Filtered_Balances.Balance,
 		isnull(SEC_UNFUNDED,0) + isnull(SVB_UTILIZED_EXPOSURE_AMT,0) + isnull([Final Payment],0) AS 'Total Commitment', 
 		isnull(SEC_UNFUNDED,0) + isnull(SVB_UTILIZED_EXPOSURE_AMT,0) + isnull([Final Payment],0) -  isnull(Balance,0) AS 'Unfunded Commitment'
-
-
-
 
 FROM
 	(
@@ -158,7 +42,6 @@ FROM
 		WHERE Ranking = 1
 	) Portfolio_Segments
 	ON Portfolio_Segments.team_code = Entity_Table.TEAMCODE
-
 
 	LEFT JOIN ---not joining this qualitative data on CDM_CREDIT_LINES date. (using the max date for both; the dates don't match)
 	(
@@ -269,20 +152,6 @@ Filtered_Balances
 ON 1 = 1
 	AND Supplementary_Data.LoadDT = Filtered_Balances.LoadDT 
 	AND Supplementary_Data.CUST_LINE_NBR = Filtered_Balances.CUST_LINE_NBR
-
-
-
-
-
-
-""".format(last_month_end1=last_month_end1)
-
-
-
-# %%
-sql_risk_model = """
-
-
 select distinct a.cif,b.DATE_APPROVED , a.RISK_GRADE_TEMPLATE, a.DIFFERENCE_OF_CALC_AND_FINAL_ORR
 
 from  [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a  join 
@@ -291,91 +160,7 @@ from  [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a  join
 a.credit_req_nbr = b.CREDIT_REQ_NBR
 where a.RISK_GRADE_TEMPLATE is not null
 and b.CREDIT_REQ_STATUS = 'Booked'
-
-"""
-
-
-
-# %%
-#pull data on Current Portfolio and Risk Template distribution 
-
-df_current = pd.read_sql_query(sql_balance, conn2)
-
-df_risk_model = pd.read_sql_query(sql_risk_model, conn2)
-
-# %%
-#exclude NAV and CCLOC from the risk template data df
-#Sort values by date and keep most recent date for unique cif and risk template combinations
-
-model_list = ['NAV', 'CCLOC']
-
-df_rsk1 = df_risk_model.loc[~df_risk_model.RISK_GRADE_TEMPLATE.isin(model_list)]
-df_rsk1['DATE_APPROVED'] = pd.to_datetime(df_rsk1['DATE_APPROVED'])
-df_rsk1 = df_rsk1.sort_values(by='DATE_APPROVED', ascending=True)
-df_rsk2 = df_rsk1.drop_duplicates(subset=['cif', 'RISK_GRADE_TEMPLATE'], keep='last')
-
-# %%
-#this shows that there is duplication and the same obligor been rated by two different templates
-
-duplicate_rows = df_rsk2[df_rsk2['cif'].duplicated(keep=False)]
-sorted_df = duplicate_rows.sort_values(by='cif')
-
-
-# %%
-#for the purposes of identifying portfolio segment we are only using the most recent
-# risk template used for each obligor
-
-df_rsk3 = df_rsk2.drop_duplicates(subset=['cif'], keep='last')
-mapping_template = df_rsk3.set_index('cif')['RISK_GRADE_TEMPLATE']
-mapping_override = df_rsk3.set_index('cif')['DIFFERENCE_OF_CALC_AND_FINAL_ORR']
-df_current['risk_model'] = df_current['CIF'].map(mapping_template)
-df_current['override'] = df_current['CIF'].map(mapping_override)
-
-df_current['override_ind'] =((df_current['override'].notna()) & (df_current['override'] != 0)).astype(int)
-
-#assign risk model based on facility type for NAV and CCLOC models (as these apply to only 1 facility type each)
-
-df_current.loc[df_current['FACILITY_TYPE'] == 'NAV', 'risk_model'] = 'NAV'
-df_current.loc[df_current['FACILITY_TYPE'] == 'PCC', 'risk_model'] = 'CCLOC'
-
-
-
-# %%
-#identifying CIFs that are eligible for Innovation Templates but still not converted
-
-df_missing = df_current[df_current['risk_model'].isnull()]
-
-#exclude premium wine and private bank from analysis
-
-rbs_list = ['PW', 'PB']
-
-df_missing = df_missing[~df_missing['RBS Code'].isin(rbs_list)]
-
-facility_count = df_missing.groupby('CIF')['FACILITY_TYPE'].nunique()
-facility_count1 = facility_count.to_frame()
-facility_count1 = facility_count1.reset_index()
-multiple_facility = facility_count1[facility_count1['FACILITY_TYPE'] != 1]
-single_facility = facility_count1[facility_count1['FACILITY_TYPE'] == 1]
-
-single_cif = single_facility.CIF.unique()
-
-df_single = df_missing[df_missing['CIF'].isin(single_cif)]
-
-fac_list = ['GUD']
-
-single_facility_exclusions = df_single[~df_single['FACILITY_TYPE'].isin(fac_list)]
-
-# %%
-single_cif2 = single_facility_exclusions.CIF.unique()
-print(len(single_cif2))
-multiple_cif = multiple_facility.CIF.unique()
-print(len(multiple_cif))
-statement_cif = list(single_cif2) + list(multiple_cif)
-
-statement_cif = "', '".join(statement_cif)
-
-sql_statement = """SET NOCOUNT ON
-
+SET NOCOUNT ON
 
 select 
 
@@ -428,48 +213,3 @@ WHERE
     rn = 1;
 
 drop table #temp1 
-
-""".format(statement_cif=statement_cif)
-
-df_statement = pd.read_sql_query(sql_statement, conn2)
-
-df_statement.drop_duplicates(inplace=True)
-
-
-# %%
-#annualized the net sales to segment according to model
-
-df_statement['sales_annualized'] = df_statement['NETSALES']*12*(1/df_statement['statementmonths'])
-
-extra_large_corp = df_statement[df_statement['sales_annualized'] > 75000]
-extra_mid_size = df_statement[(df_statement['sales_annualized'] <= 75000) & (df_statement['sales_annualized'] >15000)]
-extra_early_stage = df_statement[df_statement['sales_annualized'] <= 15000]
-
-extra_large_corp1 = extra_large_corp.cif_crm.unique()
-extra_mid_size1 = extra_mid_size.cif_crm.unique()
-extra_early_stage1 = extra_early_stage.cif_crm.unique()
-
-
-# %%
-df_current.loc[df_current.CIF.isin(extra_large_corp1),'risk_model'] = 'Innovation > $75MM & Sponsor – ID/BS'
-df_current.loc[df_current.CIF.isin(extra_mid_size1),'risk_model'] = 'Innovation > $15MM up to $75MM'
-df_current.loc[df_current.CIF.isin(extra_early_stage1),'risk_model'] = 'Innovation up to $15MM'
-
-
-# %%
-override_port = df_current.groupby('risk_model')['override_ind'].sum()
-override_port.to_csv('override_current_port.csv')
-
-# %%
-balance_totals =  df_current.groupby('risk_model')['Balance'].sum()
-commitment_totals =  df_current.groupby('risk_model')['Total Commitment'].sum()
-
-
-# %%
-balance_totals1 = pd.DataFrame(balance_totals)
-commitment_totals1 = pd.DataFrame(commitment_totals)
-
-balance_totals1.to_csv('Balance_Totals.csv')
-commitment_totals1.to_csv('Commitment_Totals.csv')
-
-
