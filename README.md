@@ -1,11 +1,9 @@
 # %% [markdown]
-# ### DRR Models Input PSI Calculator
-
-# %% [markdown]
-# #### This code calculates Input PSI  portfolio for DRR Models (GFB CCLOC, GFB NAV, GFB Firm, Large Corp, Mid Size, Early Stage, GFB Firm) 
+# #### Importing libraries 
 
 # %%
-#import libraries required
+# ### Importing libraries to be used for getting data and KPI calculations
+
 
 import pandas as pd
 import numpy as np
@@ -14,1514 +12,1621 @@ pd.set_option('display.max_columns',None)
 
 import pyodbc
 
-import gc
+import os
+#print(os.getcwd())
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator, ScalarFormatter)
-import matplotlib.backends.backend_pdf as pdf_backend
+import warnings
+warnings.filterwarnings('ignore')
+
+import gc
 
 from datetime import datetime
 from datetime import date 
 from dateutil.relativedelta import relativedelta 
 import timeit
+from pandas.tseries.offsets import DateOffset
 
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
-
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import log_loss, roc_auc_score, recall_score, precision_score
 from sklearn.metrics import average_precision_score, f1_score, classification_report
 from sklearn.metrics import accuracy_score
-from sklearn.metrics import RocCurveDisplay
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-from sklearn.datasets import make_classification
+
 from sklearn.metrics import roc_curve
 from warnings import filterwarnings
-from sklearn.utils import resample
-from scipy import stats
-
-import warnings
-#from pandas.errors import SettingWithCopyWarning 
-#warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
-
 
 filterwarnings("ignore", category=UserWarning, message='.*pandas only supports SQLAlchemy connectable.*')
-
 start = datetime.now()
 #print(start)
 
-# %%
-#download Model Rating Data
-ccloc_raw_ncino = pd.read_csv('gfb_ccloc_rating_data.csv')
-nav_raw_ncino = pd.read_csv('gfb_nav_rating_data.csv')
-large_corp_raw_ncino = pd.read_csv('large_corp_rating_data.csv')
-mid_size_raw_ncino = pd.read_csv('mid_size_rating_data.csv')
-early_stage_raw_ncino = pd.read_csv('early_stage_rating_data.csv')
-gfb_firm_raw_ncino = pd.read_csv('gfb_firm_rating_data.csv')
 
 
 # %%
-column_list_gfb = ['LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.LLC_BI__Status__c', 
-               'LLC_BI__Risk_Grade_Factor_Name__c', 'LLC_BI__Qualitative_Value__c',
-                 'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.Calculated_ORR__c',
-       'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.Final_ORR__c',
-           'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.LLC_BI__Account__r.CIF__c',
-           'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.Credit_Package__r.Credit_Package_Number__c',
-           'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.CreatedDate']
+#drivers = pyodbc.drivers()
+#print("Available ODBC Drivers:", drivers)
 
-
-column_list_iv = ['LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.LLC_BI__Status__c', 
-               'LLC_BI__Risk_Grade_Factor_Name__c', 'LLC_BI__Qualitative_Value__c', 'LLC_BI__Quantitative_Value__c',
-                 'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.Calculated_ORR__c',
-       'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.Final_ORR__c',
-           'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.LLC_BI__Account__r.CIF__c',
-           'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.LLC_BI__Risk_Rating_Review__r.Credit_Package__r.Credit_Package_Number__c',
-           'LLC_BI__Risk_Grade_Factor__r.LLC_BI__Risk_Grade_Template__r.CreatedDate']
-
-new_name_gfb = ['Status','Factor_Name','Factor_Value','Calc_ORR','Final_ORR','CIF',	'CPNumber',	'Date']
-
-new_name_iv = ['Status','Factor_Name','Factor_Value_Qual','Factor_Value_Quant','Calc_ORR','Final_ORR','CIF','CPNumber','Date']
+# %% [markdown]
+# #### Function to convert month to quarter
 
 # %%
-ccloc_raw = ccloc_raw_ncino[column_list_gfb]
-nav_raw = nav_raw_ncino[column_list_gfb]
-gfb_firm_raw = gfb_firm_raw_ncino[column_list_iv]
-large_corp_raw = large_corp_raw_ncino[column_list_iv]
-mid_size_raw = mid_size_raw_ncino[column_list_iv]
-early_stage_raw = early_stage_raw_ncino[column_list_iv]
+def month_to_quarter (month):
+    if month in [1,2,3]:
+        return 'Q1'
+    elif month in [4,5,6]:
+        return 'Q2'
+    elif month in [7,8,9]:
+        return 'Q3'
+    else: return 'Q4'
 
-
-ccloc_raw.columns = new_name_gfb
-nav_raw.columns = new_name_gfb
-gfb_firm_raw.columns = new_name_iv
-large_corp_raw.columns = new_name_iv
-early_stage_raw.columns = new_name_iv
-mid_size_raw.columns = new_name_iv
-
-# %%
-#download Model Rating Data
-
-
-
-ccloc_all = ccloc_raw.loc[ccloc_raw.Status == 'Approved']
-
-ccloc_all = ccloc_all.loc[:, ~ccloc_all.columns.str.contains('^Unnamed')]
-ccloc_all = ccloc_all.drop_duplicates()
-
-
-
-nav_all = nav_raw.loc[nav_raw.Status == 'Approved']
-
-
-nav_all = nav_all.loc[:, ~nav_all.columns.str.contains('^Unnamed')]
-nav_all = nav_all.drop_duplicates()
-
-
-
-
-large_corp_all_approved = large_corp_raw.loc[large_corp_raw.Status == 'Approved']
-
-
-large_corp_all = large_corp_all_approved.loc[:, ~large_corp_all_approved.columns.str.contains('^Unnamed')]
-large_corp_all = large_corp_all.drop_duplicates()
-
-
-
-mid_size_all_approved = mid_size_raw.loc[mid_size_raw.Status == 'Approved']
-
-
-mid_size_all = mid_size_all_approved.loc[:, ~mid_size_all_approved.columns.str.contains('^Unnamed')]
-mid_size_all = mid_size_all.drop_duplicates()
-
-
-
-early_stage_all_approved = early_stage_raw.loc[early_stage_raw.Status == 'Approved']
-
-
-early_stage_all = early_stage_all_approved.loc[:, ~early_stage_all_approved.columns.str.contains('^Unnamed')]
-early_stage_all = early_stage_all.drop_duplicates()
-
-
-
-gfb_firm_all_approved = gfb_firm_raw.loc[gfb_firm_raw.Status == 'Approved']
-
-
-gfb_firm_all = gfb_firm_all_approved.loc[:, ~gfb_firm_all_approved.columns.str.contains('^Unnamed')]
-gfb_firm_all = gfb_firm_all.drop_duplicates()
-
-
-# %%
-#download Model Benchmark Data
-
-
-benchmark_ccloc_raw = pd.read_csv('gfb_ccloc_rating_data_benchmark.csv')
-ccloc_all_benchmark = benchmark_ccloc_raw.loc[benchmark_ccloc_raw.Status == 'Approved']
-
-ccloc_all_benchmark = ccloc_all_benchmark.loc[:, ~ccloc_all_benchmark.columns.str.contains('^Unnamed')]
-ccloc_all_benchmark = ccloc_all_benchmark.drop_duplicates()
-
-
-df1_PSI = pd.read_csv('gfb_nav_rating_data_benchmark.csv')
-nav_benchmark_all = df1_PSI.loc[df1_PSI.Status == 'Approved']
-
-nav_benchmark_all = nav_benchmark_all.loc[:, ~nav_benchmark_all.columns.str.contains('^Unnamed')]
-nav_benchmark_all = nav_benchmark_all.drop_duplicates()
-
-large_corp_raw = pd.read_csv('large_corp_rating_data_benchmark.csv')
-
-large_corp_all_benchmark_approved = large_corp_raw.loc[large_corp_raw.Status == 'Approved']
-
-
-large_corp_all_benchmark = large_corp_all_benchmark_approved.loc[:, ~large_corp_all_benchmark_approved.columns.str.contains('^Unnamed')]
-large_corp_all_benchmark = large_corp_all_benchmark.drop_duplicates()
-
-mid_size_raw = pd.read_csv('mid_size_rating_data_benchmark.csv')
-
-mid_size_all_benchmark_approved = mid_size_raw.loc[mid_size_raw.Status == 'Approved']
-
-
-mid_size_all_benchmark = mid_size_all_benchmark_approved.loc[:, ~mid_size_all_benchmark_approved.columns.str.contains('^Unnamed')]
-mid_size_all_benchmark = mid_size_all_benchmark.drop_duplicates()
-
-early_stage_raw = pd.read_csv('early_stage_rating_data_benchmark.csv')
-
-early_stage_all_benchmark_approved = early_stage_raw.loc[early_stage_raw.Status == 'Approved']
-
-
-early_stage_all_benchmark = early_stage_all_benchmark_approved.loc[:, ~early_stage_all_benchmark_approved.columns.str.contains('^Unnamed')]
-early_stage_all_benchmark = early_stage_all_benchmark.drop_duplicates()
-
-
-
-gfb_firm_all_benchmark_approved = gfb_firm_raw.loc[gfb_firm_raw.Status == 'Approved']
-
-
-gfb_firm_all_benchmark = gfb_firm_all_benchmark_approved.loc[:, ~gfb_firm_all_benchmark_approved.columns.str.contains('^Unnamed')]
-gfb_firm_all_benchmark = gfb_firm_all_benchmark.drop_duplicates()
+# %% [markdown]
+# #### Create dates to be used for generating performance monitoring KPIs
 
 # %%
 
 
-# %%
+current_date = date.today()
+month_end = current_date + relativedelta(day=31)
+last_month_end = month_end - relativedelta(months = 1)
 
-#GFB CCLOC Rating data
+last_month_end = last_month_end + pd.offsets.MonthEnd(n=0)
+year = last_month_end.strftime("_%Y")
+last_month_end1 = last_month_end.strftime("%m/%d/%Y")
 
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
+month_end_3m_prior = month_end -relativedelta(months=4)
 
-ccloc_factor1 = ccloc_all.loc[ccloc_all.Factor_Name == 'Fund Performance']
-ccloc_factor2 = ccloc_all.loc[ccloc_all.Factor_Name == 'LP Capacity']
-ccloc_factor3 = ccloc_all.loc[ccloc_all.Factor_Name == 'LP Diversification']
-ccloc_factor4 = ccloc_all.loc[ccloc_all.Factor_Name == 'Management Experience']
+month_end_3m_prior = month_end_3m_prior + pd.offsets.MonthEnd(n=0)
+month_end_3m_prior = month_end_3m_prior.strftime("%m/%d/%Y")
 
-ccloc_factor1['Factor_Value1']  = pd.factorize(ccloc_factor1['Factor_Value'])[0]
-ccloc_factor2['Factor_Value1']  = pd.factorize(ccloc_factor2['Factor_Value'])[0]
-ccloc_factor3['Factor_Value1']  = pd.factorize(ccloc_factor3['Factor_Value'])[0]
-ccloc_factor4['Factor_Value1']  = pd.factorize(ccloc_factor4['Factor_Value'])[0]
+month_end_12m_prior = month_end - relativedelta(months=13)
 
+month_end_12m_prior = month_end_12m_prior + pd.offsets.MonthEnd(n=0)
+month_end_12m_prior = month_end_12m_prior.strftime("%m/%d/%Y")
 
-
-ccloc_factor1_1 = ccloc_factor1.rename(columns = {'Factor_Value1': 'Fund_Performance' })
-ccloc_factor2_1 = ccloc_factor2.rename(columns = {'Factor_Value1': 'LP_Capacity' })
-ccloc_factor3_1 = ccloc_factor3.rename(columns = {'Factor_Value1': 'LP_Diversification' })
-ccloc_factor4_1 = ccloc_factor4.rename(columns = {'Factor_Value1': 'Management_Experience' })
+last_month = last_month_end.month
+kpi_quarter = month_to_quarter(last_month)
 
 
 
-ccloc_factor1_2 = ccloc_factor1_1.drop(['Factor_Name', 'Status', 'Factor_Value'], axis = 1)
-ccloc_factor2_2 = ccloc_factor2_1.drop(['Factor_Name', 'Status', 'Factor_Value'], axis = 1)
-ccloc_factor3_2 = ccloc_factor3_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-ccloc_factor4_2 = ccloc_factor4_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
+eval_dates = [month_end_3m_prior, last_month_end1  ]
 
-ccloc_all2 = pd.merge(ccloc_factor1_2, ccloc_factor2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-ccloc_all3 = pd.merge(ccloc_all2, ccloc_factor3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-ccloc_final = pd.merge(ccloc_all3, ccloc_factor4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-ccloc_final2 = ccloc_final.drop_duplicates().copy()
-
-ccloc_final2['Date'] = pd.to_datetime(ccloc_final2['Date'])
-
-ccloc_final2['loaddt'] = ccloc_final2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-ccloc_final2 = ccloc_final2.rename(columns = { 'CIF': 'cif'})
-ccloc_final3 = ccloc_final2.copy()
-
+model_name = ['Innovation Large Corp', 'Innovation Mid Size', 'Innovation Early Stage', 'GFB CCLOC', 'GFB NAV', 'GFB Firm']
 
 
 # %%
-#GFB CCLOC benchmark data
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-ccloc_benchmark_factor1 = ccloc_all_benchmark.loc[ccloc_all_benchmark.Factor_Name == 'Fund Performance']
-ccloc_benchmark_factor2 = ccloc_all_benchmark.loc[ccloc_all_benchmark.Factor_Name == 'LP Capacity']
-ccloc_benchmark_factor3 = ccloc_all_benchmark.loc[ccloc_all_benchmark.Factor_Name == 'LP Diversification']
-ccloc_benchmark_factor4 = ccloc_all_benchmark.loc[ccloc_all_benchmark.Factor_Name == 'Management Experience']
-
-ccloc_benchmark_factor1['Factor_Value1']  = pd.factorize(ccloc_benchmark_factor1['Factor_Value'])[0]
-ccloc_benchmark_factor2['Factor_Value1']  = pd.factorize(ccloc_benchmark_factor2['Factor_Value'])[0]
-ccloc_benchmark_factor3['Factor_Value1']  = pd.factorize(ccloc_benchmark_factor3['Factor_Value'])[0]
-ccloc_benchmark_factor4['Factor_Value1']  = pd.factorize(ccloc_benchmark_factor4['Factor_Value'])[0]
-
-
-
-
-ccloc_benchmark_factor1_1 = ccloc_benchmark_factor1.rename(columns = {'Factor_Value1': 'Fund_Performance' })
-ccloc_benchmark_factor2_1 = ccloc_benchmark_factor2.rename(columns = {'Factor_Value1': 'LP_Capacity' })
-ccloc_benchmark_factor3_1 = ccloc_benchmark_factor3.rename(columns = {'Factor_Value1': 'LP_Diversification' })
-ccloc_benchmark_factor4_1 = ccloc_benchmark_factor4.rename(columns = {'Factor_Value1': 'Management_Experience' })
-
-ccloc_benchmark_factor1_2 = ccloc_benchmark_factor1_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-ccloc_benchmark_factor2_2 = ccloc_benchmark_factor2_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-ccloc_benchmark_factor3_2 = ccloc_benchmark_factor3_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-ccloc_benchmark_factor4_2 = ccloc_benchmark_factor4_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-
-ccloc_benchmark_all2 = pd.merge(ccloc_benchmark_factor1_2, ccloc_benchmark_factor2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-ccloc_benchmark_all3 = pd.merge(ccloc_benchmark_all2, ccloc_benchmark_factor3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-ccloc_benchmark_final = pd.merge(ccloc_benchmark_all3, ccloc_benchmark_factor4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-ccloc_benchmark_final2 = ccloc_benchmark_final.drop_duplicates().copy()
-
-ccloc_benchmark_final2['Date'] = pd.to_datetime(ccloc_benchmark_final2['Date'])
-
-ccloc_benchmark_final2['loaddt'] = ccloc_benchmark_final2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-ccloc_benchmark_final2 = ccloc_benchmark_final2.rename(columns = { 'CIF': 'cif'})
-
-
-
-
-
-
-
+print(last_month_end1, month_end_12m_prior, kpi_quarter)
 
 # %%
-#GFB NAV Rating data
+#create function for getting the last 12 month end dates
 
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-nav_factor1 = nav_all.loc[nav_all.Factor_Name == 'Exit Environment']
-nav_factor2 = nav_all.loc[nav_all.Factor_Name == 'Asset Diversification']
-nav_factor3 = nav_all.loc[nav_all.Factor_Name == 'Industry Concentration']
-nav_factor4 = nav_all.loc[nav_all.Factor_Name == 'Asset Coverage']
-nav_factor5 = nav_all.loc[nav_all.Factor_Name == 'Manager Quality']
-
-nav_factor1['Factor_Value1']  = pd.factorize(nav_factor1['Factor_Value'])[0]
-nav_factor2['Factor_Value1']  = pd.factorize(nav_factor2['Factor_Value'])[0]
-nav_factor3['Factor_Value1']  = pd.factorize(nav_factor3['Factor_Value'])[0]
-nav_factor4['Factor_Value1']  = pd.factorize(nav_factor4['Factor_Value'])[0]
-nav_factor5['Factor_Value1']  = pd.factorize(nav_factor5['Factor_Value'])[0]
-
-nav_factor1_1 = nav_factor1.rename(columns = {'Factor_Value1': 'Exit_Environment' })
-nav_factor2_1 = nav_factor2.rename(columns = {'Factor_Value1': 'Asset_Diversification' })
-nav_factor3_1 = nav_factor3.rename(columns = {'Factor_Value1': 'Industry_Concentration' })
-nav_factor4_1 = nav_factor4.rename(columns = {'Factor_Value1': 'Asset_Coverage' })
-nav_factor5_1 = nav_factor5.rename(columns = {'Factor_Value1': 'Manager_Quality' })
-
-nav_factor1_2 = nav_factor1_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-nav_factor2_2 = nav_factor2_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-nav_factor3_2 = nav_factor3_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-nav_factor4_2 = nav_factor4_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-nav_factor5_2 = nav_factor5_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-
-nav_all2 = pd.merge(nav_factor1_2, nav_factor2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-nav_all3 = pd.merge(nav_all2, nav_factor3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-nav_all4 = pd.merge(nav_all3, nav_factor4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-nav_final = pd.merge(nav_all4, nav_factor5_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-nav_final2 = nav_final.drop_duplicates().copy()
-
-nav_final2['Date'] = pd.to_datetime(nav_final2['Date'])
-
-nav_final2['loaddt'] = nav_final2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-nav_final2 = nav_final2.rename(columns = { 'CIF': 'cif'})
-nav_final3 = nav_final2.copy()
-
-
-
-# %%
-#GFB NAV Benchmark data
-
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-nav_benchmark_factor1 = nav_benchmark_all.loc[nav_benchmark_all.Factor_Name == 'Exit Environment']
-nav_benchmark_factor2 = nav_benchmark_all.loc[nav_benchmark_all.Factor_Name == 'Asset Diversification']
-nav_benchmark_factor3 = nav_benchmark_all.loc[nav_benchmark_all.Factor_Name == 'Industry Concentration']
-nav_benchmark_factor4 = nav_benchmark_all.loc[nav_benchmark_all.Factor_Name == 'Asset Coverage']
-nav_benchmark_factor5 = nav_benchmark_all.loc[nav_benchmark_all.Factor_Name == 'Manager Quality']
-
-nav_benchmark_factor1['Factor_Value1'] = pd.factorize(nav_benchmark_factor1['Factor_Value'])[0]
-nav_benchmark_factor2['Factor_Value1'] = pd.factorize(nav_benchmark_factor2['Factor_Value'])[0]
-nav_benchmark_factor3['Factor_Value1'] = pd.factorize(nav_benchmark_factor3['Factor_Value'])[0]
-nav_benchmark_factor4['Factor_Value1'] = pd.factorize(nav_benchmark_factor4['Factor_Value'])[0]
-nav_benchmark_factor5['Factor_Value1'] = pd.factorize(nav_benchmark_factor5['Factor_Value'])[0]
-
-
-
-
-
-nav_benchmark_factor1_1 = nav_benchmark_factor1.rename(columns = {'Factor_Value1': 'Exit_Environment' })
-nav_benchmark_factor2_1 = nav_benchmark_factor2.rename(columns = {'Factor_Value1': 'Asset_Diversification' })
-nav_benchmark_factor3_1 = nav_benchmark_factor3.rename(columns = {'Factor_Value1': 'Industry_Concentration' })
-nav_benchmark_factor4_1 = nav_benchmark_factor4.rename(columns = {'Factor_Value1': 'Asset_Coverage' })
-nav_benchmark_factor5_1 = nav_benchmark_factor5.rename(columns = {'Factor_Value1': 'Manager_Quality' })
-
-nav_benchmark_factor1_2 = nav_benchmark_factor1_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-nav_benchmark_factor2_2 = nav_benchmark_factor2_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-nav_benchmark_factor3_2 = nav_benchmark_factor3_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-nav_benchmark_factor4_2 = nav_benchmark_factor4_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-nav_benchmark_factor5_2 = nav_benchmark_factor5_1.drop(['Factor_Name', 'Status','Factor_Value'], axis = 1)
-
-nav_benchmark_all2 = pd.merge(nav_benchmark_factor1_2, nav_benchmark_factor2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-nav_benchmark_all3 = pd.merge(nav_benchmark_all2, nav_benchmark_factor3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-nav_benchmark_all4 = pd.merge(nav_benchmark_all3, nav_benchmark_factor4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-nav_benchmark_final = pd.merge(nav_benchmark_all4, nav_benchmark_factor5_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-nav_benchmark_final2 = nav_benchmark_final.drop_duplicates().copy()
-
-nav_benchmark_final2['Date'] = pd.to_datetime(nav_benchmark_final2['Date'])
-
-nav_benchmark_final2['loaddt'] = nav_benchmark_final2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-nav_benchmark_final2 = nav_benchmark_final2.rename(columns = { 'CIF': 'cif'})
-nav_benchmark_final3 = nav_benchmark_final2.copy()
-
-# %%
-#Large Corp 
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-large_corp_factor1 = large_corp_all.loc[large_corp_all.Factor_Name == 'Profitability - Gross Margin %']
-large_corp_factor2 = large_corp_all.loc[large_corp_all.Factor_Name == 'Scale - Revenue (Thousands)']
-large_corp_factor3 = large_corp_all.loc[large_corp_all.Factor_Name == 'Leverage - Total Funded Debt to EBITDA']
-large_corp_factor4 = large_corp_all.loc[large_corp_all.Factor_Name == 'Liquidity - Current Ratio']
-large_corp_factor5 = large_corp_all.loc[large_corp_all.Factor_Name == 'Coverage - FCCR']
-
-large_corp_factor1['Factor_Value_Quant1'] = pd.factorize(large_corp_factor1['Factor_Value_Quant'])[0]
-large_corp_factor2['Factor_Value_Quant1'] = pd.factorize(large_corp_factor2['Factor_Value_Quant'])[0]
-large_corp_factor3['Factor_Value_Quant1'] = pd.factorize(large_corp_factor3['Factor_Value_Quant'])[0]
-large_corp_factor4['Factor_Value_Quant1'] = pd.factorize(large_corp_factor4['Factor_Value_Quant'])[0]
-large_corp_factor5['Factor_Value_Quant1'] = pd.factorize(large_corp_factor5['Factor_Value_Quant'])[0]
-
-
-
-large_corp_factor1.drop('Factor_Value_Qual', axis=1, inplace=True)
-large_corp_factor2.drop('Factor_Value_Qual', axis=1, inplace=True)
-large_corp_factor3.drop('Factor_Value_Qual', axis=1, inplace=True)
-large_corp_factor4.drop('Factor_Value_Qual', axis=1, inplace=True)
-large_corp_factor5.drop('Factor_Value_Qual', axis=1, inplace=True)
-
-large_corp_factor1.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-large_corp_factor2.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-large_corp_factor3.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-large_corp_factor4.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-large_corp_factor5.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-
-
-large_corp_factor6 = large_corp_all.loc[large_corp_all.Factor_Name == 'Financial Factors / Access to Capital']
-large_corp_factor7 = large_corp_all.loc[large_corp_all.Factor_Name == 'Management Evaluation']
-large_corp_factor8 = large_corp_all.loc[large_corp_all.Factor_Name == 'Cashflow Stability']
-large_corp_factor9 = large_corp_all.loc[large_corp_all.Factor_Name == 'Industry / Competitive Dynamics']
-
-
-large_corp_factor6['Factor_Value_Qual1'] = pd.factorize(large_corp_factor6['Factor_Value_Qual'])[0]
-large_corp_factor7['Factor_Value_Qual1'] = pd.factorize(large_corp_factor7['Factor_Value_Qual'])[0]
-large_corp_factor8['Factor_Value_Qual1'] = pd.factorize(large_corp_factor8['Factor_Value_Qual'])[0]
-large_corp_factor9['Factor_Value_Qual1'] = pd.factorize(large_corp_factor9['Factor_Value_Qual'])[0]
-
-large_corp_factor6.drop('Factor_Value_Quant', axis=1, inplace=True)
-large_corp_factor7.drop('Factor_Value_Quant', axis=1, inplace=True)
-large_corp_factor8.drop('Factor_Value_Quant', axis=1, inplace=True)
-large_corp_factor9.drop('Factor_Value_Quant', axis=1, inplace=True)
-
-large_corp_factor6.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-large_corp_factor7.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-large_corp_factor8.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-large_corp_factor9.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-
-
-
-
-large_corp_factor1_1 = large_corp_factor1.rename(columns = {'Factor_Value': 'Gross_Margin' })
-large_corp_factor2_1 = large_corp_factor2.rename(columns = {'Factor_Value': 'Scale' })
-large_corp_factor3_1 = large_corp_factor3.rename(columns = {'Factor_Value': 'TDEBITDA' })
-large_corp_factor4_1 = large_corp_factor4.rename(columns = {'Factor_Value': 'Current_Ratio' })
-large_corp_factor5_1 = large_corp_factor5.rename(columns = {'Factor_Value': 'FCCR' })
-
-large_corp_factor6_1 = large_corp_factor6.rename(columns = {'Factor_Value': 'Capital' })
-large_corp_factor7_1 = large_corp_factor7.rename(columns = {'Factor_Value': 'Management' })
-large_corp_factor8_1 = large_corp_factor8.rename(columns = {'Factor_Value': 'Cashflow' })
-large_corp_factor9_1 = large_corp_factor9.rename(columns = {'Factor_Value': 'Industry' })
-
-large_corp_factor1_2 = large_corp_factor1_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-large_corp_factor2_2 = large_corp_factor2_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-large_corp_factor3_2 = large_corp_factor3_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-large_corp_factor4_2 = large_corp_factor4_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-large_corp_factor5_2 = large_corp_factor5_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-
-large_corp_factor6_2 = large_corp_factor6_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-large_corp_factor7_2 = large_corp_factor7_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-large_corp_factor8_2 = large_corp_factor8_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-large_corp_factor9_2 = large_corp_factor9_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-
-
-
-large_corp_all2 = pd.merge(large_corp_factor1_2, large_corp_factor2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-large_corp_all3 = pd.merge(large_corp_all2, large_corp_factor3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-large_corp_all4 = pd.merge(large_corp_all3, large_corp_factor4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-large_corp_all5 = pd.merge(large_corp_all4, large_corp_factor5_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-large_corp_all6 = pd.merge(large_corp_all5, large_corp_factor6_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-large_corp_all7 = pd.merge(large_corp_all6, large_corp_factor7_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-large_corp_all8 = pd.merge(large_corp_all7, large_corp_factor8_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-large_corp_final = pd.merge(large_corp_all8, large_corp_factor9_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-
-
-
-
-
-
-
-large_corp_final2 = large_corp_final.drop_duplicates().copy()
-
-large_corp_final2['Date'] = pd.to_datetime(large_corp_final2['Date'])
-
-large_corp_final2['loaddt'] = large_corp_final2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-large_corp_final2 = large_corp_final2.rename(columns = { 'CIF': 'cif'})
-large_corp_final3 = large_corp_final2.copy()
-
-
-
-
-# %%
-large_corp_factor4_2.columns
-
-# %%
-#Large Corp Benchmark
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-large_corp_factor_benchmark1 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Profitability - Gross Margin %']
-large_corp_factor_benchmark2 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Scale - Revenue (Thousands)']
-large_corp_factor_benchmark3 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Leverage - Total Funded Debt to EBITDA']
-large_corp_factor_benchmark4 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Liquidity - Current Ratio']
-large_corp_factor_benchmark5 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Coverage - FCCR']
-
-
-large_corp_factor_benchmark1['Factor_Value_Quant1'] = pd.factorize(large_corp_factor_benchmark1['Factor_Value_Quant'])[0]
-large_corp_factor_benchmark2['Factor_Value_Quant1'] = pd.factorize(large_corp_factor_benchmark2['Factor_Value_Quant'])[0]
-large_corp_factor_benchmark3['Factor_Value_Quant1'] = pd.factorize(large_corp_factor_benchmark3['Factor_Value_Quant'])[0]
-large_corp_factor_benchmark4['Factor_Value_Quant1'] = pd.factorize(large_corp_factor_benchmark4['Factor_Value_Quant'])[0]
-large_corp_factor_benchmark5['Factor_Value_Quant1'] = pd.factorize(large_corp_factor_benchmark5['Factor_Value_Quant'])[0]
-
-
-
-
-large_corp_factor_benchmark1.drop('Factor_Value_Qual', axis=1, inplace=True)
-large_corp_factor_benchmark2.drop('Factor_Value_Qual', axis=1, inplace=True)
-large_corp_factor_benchmark3.drop('Factor_Value_Qual', axis=1, inplace=True)
-large_corp_factor_benchmark4.drop('Factor_Value_Qual', axis=1, inplace=True)
-large_corp_factor_benchmark5.drop('Factor_Value_Qual', axis=1, inplace=True)
-
-
-large_corp_factor_benchmark1.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-large_corp_factor_benchmark2.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-large_corp_factor_benchmark3.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-large_corp_factor_benchmark4.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-large_corp_factor_benchmark5.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-
-
-large_corp_factor_benchmark6 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Financial Factors / Access to Capital']
-large_corp_factor_benchmark7 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Management Evaluation']
-large_corp_factor_benchmark8 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Cashflow Stability']
-large_corp_factor_benchmark9 = large_corp_all_benchmark.loc[large_corp_all_benchmark.Factor_Name == 'Industry / Competitive Dynamics']
-
-large_corp_factor_benchmark6['Factor_Value_Qual1'] = pd.factorize(large_corp_factor_benchmark6['Factor_Value_Qual'])[0]
-large_corp_factor_benchmark7['Factor_Value_Qual1'] = pd.factorize(large_corp_factor_benchmark7['Factor_Value_Qual'])[0]
-large_corp_factor_benchmark8['Factor_Value_Qual1'] = pd.factorize(large_corp_factor_benchmark8['Factor_Value_Qual'])[0]
-large_corp_factor_benchmark9['Factor_Value_Qual1'] = pd.factorize(large_corp_factor_benchmark9['Factor_Value_Qual'])[0]
-
-
-
-
-
-
-large_corp_factor_benchmark6.drop('Factor_Value_Quant', axis=1, inplace=True)
-large_corp_factor_benchmark7.drop('Factor_Value_Quant', axis=1, inplace=True)
-large_corp_factor_benchmark8.drop('Factor_Value_Quant', axis=1, inplace=True)
-large_corp_factor_benchmark9.drop('Factor_Value_Quant', axis=1, inplace=True)
-
-large_corp_factor_benchmark6.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-large_corp_factor_benchmark7.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-large_corp_factor_benchmark8.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-large_corp_factor_benchmark9.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-
-
-
-
-large_corp_factor_benchmark1_1 = large_corp_factor_benchmark1.rename(columns = {'Factor_Value': 'Gross_Margin' })
-large_corp_factor_benchmark2_1 = large_corp_factor_benchmark2.rename(columns = {'Factor_Value': 'Scale' })
-large_corp_factor_benchmark3_1 = large_corp_factor_benchmark3.rename(columns = {'Factor_Value': 'TDEBITDA' })
-large_corp_factor_benchmark4_1 = large_corp_factor_benchmark4.rename(columns = {'Factor_Value': 'Current_Ratio' })
-large_corp_factor_benchmark5_1 = large_corp_factor_benchmark5.rename(columns = {'Factor_Value': 'FCCR' })
-
-large_corp_factor_benchmark6_1 = large_corp_factor_benchmark6.rename(columns = {'Factor_Value': 'Capital' })
-large_corp_factor_benchmark7_1 = large_corp_factor_benchmark7.rename(columns = {'Factor_Value': 'Management' })
-large_corp_factor_benchmark8_1 = large_corp_factor_benchmark8.rename(columns = {'Factor_Value': 'Cashflow' })
-large_corp_factor_benchmark9_1 = large_corp_factor_benchmark9.rename(columns = {'Factor_Value': 'Industry' })
-
-large_corp_factor_benchmark1_2 = large_corp_factor_benchmark1_1.drop(['Factor_Value_Quant', 'Factor_Name', 'Status'], axis = 1)
-large_corp_factor_benchmark2_2 = large_corp_factor_benchmark2_1.drop(['Factor_Value_Quant', 'Factor_Name', 'Status'], axis = 1)
-large_corp_factor_benchmark3_2 = large_corp_factor_benchmark3_1.drop(['Factor_Value_Quant', 'Factor_Name', 'Status'], axis = 1)
-large_corp_factor_benchmark4_2 = large_corp_factor_benchmark4_1.drop(['Factor_Value_Quant', 'Factor_Name', 'Status'], axis = 1)
-large_corp_factor_benchmark5_2 = large_corp_factor_benchmark5_1.drop(['Factor_Value_Quant', 'Factor_Name', 'Status'], axis = 1)
-
-large_corp_factor_benchmark6_2 = large_corp_factor_benchmark6_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-large_corp_factor_benchmark7_2 = large_corp_factor_benchmark7_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-large_corp_factor_benchmark8_2 = large_corp_factor_benchmark8_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-large_corp_factor_benchmark9_2 = large_corp_factor_benchmark9_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-
-
-
-large_corp_all_benchmark2 = pd.merge(large_corp_factor_benchmark1_2, large_corp_factor_benchmark2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-large_corp_all_benchmark3 = pd.merge(large_corp_all_benchmark2, large_corp_factor_benchmark3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-large_corp_all_benchmark4 = pd.merge(large_corp_all_benchmark3, large_corp_factor_benchmark4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-large_corp_all_benchmark5 = pd.merge(large_corp_all_benchmark4, large_corp_factor_benchmark5_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-large_corp_all_benchmark6 = pd.merge(large_corp_all_benchmark5, large_corp_factor_benchmark6_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-large_corp_all_benchmark7 = pd.merge(large_corp_all_benchmark6, large_corp_factor_benchmark7_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-large_corp_all_benchmark8 = pd.merge(large_corp_all_benchmark7, large_corp_factor_benchmark8_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-large_corp_final_benchmark = pd.merge(large_corp_all_benchmark8, large_corp_factor_benchmark9_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-
-
-
-
-
-
-
-large_corp_final_benchmark2 = large_corp_final_benchmark.drop_duplicates().copy()
-
-large_corp_final_benchmark2['Date'] = pd.to_datetime(large_corp_final_benchmark2['Date'])
-
-large_corp_final_benchmark2['loaddt'] = large_corp_final_benchmark2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-large_corp_final_benchmark2 = large_corp_final_benchmark2.rename(columns = { 'CIF': 'cif'})
-large_corp_final_benchmark3 = large_corp_final_benchmark2.copy()
-
-
-
-
-# %%
-#Mid Size 
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-mid_size_factor1 = mid_size_all.loc[mid_size_all.Factor_Name == 'Gross Margin %']
-mid_size_factor2 = mid_size_all.loc[mid_size_all.Factor_Name == 'Revenue (Thousands)']
-mid_size_factor3 = mid_size_all.loc[mid_size_all.Factor_Name == 'Capital Structure']
-mid_size_factor4 = mid_size_all.loc[mid_size_all.Factor_Name == 'Total Funded Debt to EBITDA']
-
-mid_size_factor1['Factor_Value_Quant1'] = pd.factorize(mid_size_factor1['Factor_Value_Quant'])[0]
-mid_size_factor2['Factor_Value_Quant1'] = pd.factorize(mid_size_factor2['Factor_Value_Quant'])[0]
-mid_size_factor3['Factor_Value_Quant1'] = pd.factorize(mid_size_factor3['Factor_Value_Quant'])[0]
-mid_size_factor4['Factor_Value_Quant1'] = pd.factorize(mid_size_factor4['Factor_Value_Quant'])[0]
-
-
-
-mid_size_factor1.drop('Factor_Value_Qual', axis=1, inplace=True)
-mid_size_factor2.drop('Factor_Value_Qual', axis=1, inplace=True)
-mid_size_factor3.drop('Factor_Value_Qual', axis=1, inplace=True)
-mid_size_factor4.drop('Factor_Value_Qual', axis=1, inplace=True)
-
-
-mid_size_factor1.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-mid_size_factor2.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-mid_size_factor3.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-mid_size_factor4.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-
-
-mid_size_factor5 = mid_size_all.loc[mid_size_all.Factor_Name == 'Business & Revenue Model']
-mid_size_factor6 = mid_size_all.loc[mid_size_all.Factor_Name == 'Industry / Funding and Regulatory Environment']
-mid_size_factor7 = mid_size_all.loc[mid_size_all.Factor_Name == 'Management / Ownership Quality']
-mid_size_factor8 = mid_size_all.loc[mid_size_all.Factor_Name == 'Access to Capital & Financial Health']
-
-
-mid_size_factor5['Factor_Value_Qual1'] = pd.factorize(mid_size_factor5['Factor_Value_Qual'])[0]
-mid_size_factor6['Factor_Value_Qual1'] = pd.factorize(mid_size_factor6['Factor_Value_Qual'])[0]
-mid_size_factor7['Factor_Value_Qual1'] = pd.factorize(mid_size_factor7['Factor_Value_Qual'])[0]
-mid_size_factor8['Factor_Value_Qual1'] = pd.factorize(mid_size_factor8['Factor_Value_Qual'])[0]
-
-
-
-mid_size_factor5.drop('Factor_Value_Quant', axis=1, inplace=True)
-mid_size_factor6.drop('Factor_Value_Quant', axis=1, inplace=True)
-mid_size_factor7.drop('Factor_Value_Quant', axis=1, inplace=True)
-mid_size_factor8.drop('Factor_Value_Quant', axis=1, inplace=True)
-
-mid_size_factor5.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-mid_size_factor6.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-mid_size_factor7.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-mid_size_factor8.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-
-
-
-
-mid_size_factor1_1 = mid_size_factor1.rename(columns = {'Factor_Value': 'Gross_Margin' })
-mid_size_factor2_1 = mid_size_factor2.rename(columns = {'Factor_Value': 'Scale' })
-mid_size_factor3_1 = mid_size_factor3.rename(columns = {'Factor_Value': 'Cap_Structure' })
-mid_size_factor4_1 = mid_size_factor4.rename(columns = {'Factor_Value': 'TDEBITDA' })
-
-
-mid_size_factor5_1 = mid_size_factor5.rename(columns = {'Factor_Value': 'Business' })
-mid_size_factor6_1 = mid_size_factor6.rename(columns = {'Factor_Value': 'Industry' })
-mid_size_factor7_1 = mid_size_factor7.rename(columns = {'Factor_Value': 'Management' })
-mid_size_factor8_1 = mid_size_factor8.rename(columns = {'Factor_Value': 'Capital' })
-
-mid_size_factor1_2 = mid_size_factor1_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-mid_size_factor2_2 = mid_size_factor2_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-mid_size_factor3_2 = mid_size_factor3_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-mid_size_factor4_2 = mid_size_factor4_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-
-mid_size_factor5_2 = mid_size_factor5_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-mid_size_factor6_2 = mid_size_factor6_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-mid_size_factor7_2 = mid_size_factor7_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-mid_size_factor8_2 = mid_size_factor8_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-
-
-
-
-mid_size_all2 = pd.merge(mid_size_factor1_2, mid_size_factor2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-mid_size_all3 = pd.merge(mid_size_all2, mid_size_factor3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-mid_size_all4 = pd.merge(mid_size_all3, mid_size_factor4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-mid_size_all5 = pd.merge(mid_size_all4, mid_size_factor5_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-mid_size_all6 = pd.merge(mid_size_all5, mid_size_factor6_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-mid_size_all7 = pd.merge(mid_size_all6, mid_size_factor7_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-mid_size_final = pd.merge(mid_size_all7, mid_size_factor8_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-
-
-
-
-
-
-
-mid_size_final2 = mid_size_final.drop_duplicates().copy()
-
-mid_size_final2['Date'] = pd.to_datetime(mid_size_final2['Date'])
-
-mid_size_final2['loaddt'] = mid_size_final2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-mid_size_final2 = mid_size_final2.rename(columns = { 'CIF': 'cif'})
-mid_size_final3 = mid_size_final2.copy()
-
-
-
-
-# %%
-#Mid Size Benchmark
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-mid_size_factor_benchmark1 = mid_size_all_benchmark.loc[mid_size_all_benchmark.Factor_Name == 'Gross Margin %']
-mid_size_factor_benchmark2 = mid_size_all_benchmark.loc[mid_size_all_benchmark.Factor_Name == 'Revenue (Thousands)']
-mid_size_factor_benchmark3 = mid_size_all_benchmark.loc[mid_size_all_benchmark.Factor_Name == 'Capital Structure']
-mid_size_factor_benchmark4 = mid_size_all_benchmark.loc[mid_size_all_benchmark.Factor_Name == 'Total Funded Debt to EBITDA']
-
-mid_size_factor_benchmark1['Factor_Value_Quant1'] = pd.factorize(mid_size_factor_benchmark1['Factor_Value_Quant'])[0]
-mid_size_factor_benchmark2['Factor_Value_Quant1'] = pd.factorize(mid_size_factor_benchmark2['Factor_Value_Quant'])[0]
-mid_size_factor_benchmark3['Factor_Value_Quant1'] = pd.factorize(mid_size_factor_benchmark3['Factor_Value_Quant'])[0]
-mid_size_factor_benchmark4['Factor_Value_Quant1'] = pd.factorize(mid_size_factor_benchmark4['Factor_Value_Quant'])[0]
-
-
-
-
-
-mid_size_factor_benchmark1.drop('Factor_Value_Qual', axis=1, inplace=True)
-mid_size_factor_benchmark2.drop('Factor_Value_Qual', axis=1, inplace=True)
-mid_size_factor_benchmark3.drop('Factor_Value_Qual', axis=1, inplace=True)
-mid_size_factor_benchmark4.drop('Factor_Value_Qual', axis=1, inplace=True)
-
-
-mid_size_factor_benchmark1.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-mid_size_factor_benchmark2.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-mid_size_factor_benchmark3.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-mid_size_factor_benchmark4.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-
-
-mid_size_factor_benchmark5 = mid_size_all_benchmark.loc[mid_size_all_benchmark.Factor_Name == 'Business & Revenue Model']
-mid_size_factor_benchmark6 = mid_size_all_benchmark.loc[mid_size_all_benchmark.Factor_Name == 'Industry / Funding and Regulatory Environment']
-mid_size_factor_benchmark7 = mid_size_all_benchmark.loc[mid_size_all_benchmark.Factor_Name == 'Management / Ownership Quality']
-mid_size_factor_benchmark8 = mid_size_all_benchmark.loc[mid_size_all_benchmark.Factor_Name == 'Access to Capital & Financial Health']
-
-
-mid_size_factor_benchmark5['Factor_Value_Qual1'] = pd.factorize(mid_size_factor_benchmark5['Factor_Value_Qual'])[0]
-mid_size_factor_benchmark6['Factor_Value_Qual1'] = pd.factorize(mid_size_factor_benchmark6['Factor_Value_Qual'])[0]
-mid_size_factor_benchmark7['Factor_Value_Qual1'] = pd.factorize(mid_size_factor_benchmark7['Factor_Value_Qual'])[0]
-mid_size_factor_benchmark8['Factor_Value_Qual1'] = pd.factorize(mid_size_factor_benchmark8['Factor_Value_Qual'])[0]
-
-
-mid_size_factor_benchmark5.drop('Factor_Value_Quant', axis=1, inplace=True)
-mid_size_factor_benchmark6.drop('Factor_Value_Quant', axis=1, inplace=True)
-mid_size_factor_benchmark7.drop('Factor_Value_Quant', axis=1, inplace=True)
-mid_size_factor_benchmark8.drop('Factor_Value_Quant', axis=1, inplace=True)
-
-mid_size_factor_benchmark5.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-mid_size_factor_benchmark6.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-mid_size_factor_benchmark7.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-mid_size_factor_benchmark8.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-
-
-
-
-mid_size_factor_benchmark1_1 = mid_size_factor_benchmark1.rename(columns = {'Factor_Value': 'Gross_Margin' })
-mid_size_factor_benchmark2_1 = mid_size_factor_benchmark2.rename(columns = {'Factor_Value': 'Scale' })
-mid_size_factor_benchmark3_1 = mid_size_factor_benchmark3.rename(columns = {'Factor_Value': 'Cap_Structure' })
-mid_size_factor_benchmark4_1 = mid_size_factor_benchmark4.rename(columns = {'Factor_Value': 'TDEBITDA' })
-
-
-mid_size_factor_benchmark5_1 = mid_size_factor_benchmark5.rename(columns = {'Factor_Value': 'Business' })
-mid_size_factor_benchmark6_1 = mid_size_factor_benchmark6.rename(columns = {'Factor_Value': 'Industry' })
-mid_size_factor_benchmark7_1 = mid_size_factor_benchmark7.rename(columns = {'Factor_Value': 'Management' })
-mid_size_factor_benchmark8_1 = mid_size_factor_benchmark8.rename(columns = {'Factor_Value': 'Capital' })
-
-mid_size_factor_benchmark1_2 = mid_size_factor_benchmark1_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-mid_size_factor_benchmark2_2 = mid_size_factor_benchmark2_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-mid_size_factor_benchmark3_2 = mid_size_factor_benchmark3_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-mid_size_factor_benchmark4_2 = mid_size_factor_benchmark4_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-
-mid_size_factor_benchmark5_2 = mid_size_factor_benchmark5_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-mid_size_factor_benchmark6_2 = mid_size_factor_benchmark6_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-mid_size_factor_benchmark7_2 = mid_size_factor_benchmark7_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-mid_size_factor_benchmark8_2 = mid_size_factor_benchmark8_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-
-
-
-
-
-mid_size_all_benchmark2 = pd.merge(mid_size_factor_benchmark1_2, mid_size_factor_benchmark2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-mid_size_all_benchmark3 = pd.merge(mid_size_all_benchmark2, mid_size_factor_benchmark3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-mid_size_all_benchmark4 = pd.merge(mid_size_all_benchmark3, mid_size_factor_benchmark4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-mid_size_all_benchmark5 = pd.merge(mid_size_all_benchmark4, mid_size_factor_benchmark5_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-mid_size_all_benchmark6 = pd.merge(mid_size_all_benchmark5, mid_size_factor_benchmark6_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-mid_size_all_benchmark7 = pd.merge(mid_size_all_benchmark6, mid_size_factor_benchmark7_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-mid_size_final_benchmark = pd.merge(mid_size_all_benchmark7, mid_size_factor_benchmark8_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-
-
-
-
-
-
-
-mid_size_final_benchmark2 = mid_size_final_benchmark.drop_duplicates().copy()
-
-mid_size_final_benchmark2['Date'] = pd.to_datetime(mid_size_final_benchmark2['Date'])
-
-mid_size_final_benchmark2['loaddt'] = mid_size_final_benchmark2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-mid_size_final_benchmark2 = mid_size_final_benchmark2.rename(columns = { 'CIF': 'cif'})
-mid_size_final_benchmark3 = mid_size_final_benchmark2.copy()
-
-
-
-
-# %%
-#Early Stage 
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-early_stage_factor1 = early_stage_all.loc[early_stage_all.Factor_Name == 'Net Margin %']
-early_stage_factor2 = early_stage_all.loc[early_stage_all.Factor_Name == 'Revenue (Thousands)']
-early_stage_factor3 = early_stage_all.loc[early_stage_all.Factor_Name == 'Capital Structure']
-early_stage_factor4 = early_stage_all.loc[early_stage_all.Factor_Name == 'Total Funded Debt to EBITDA']
-
-
-early_stage_factor1['Factor_Value_Quant1'] = pd.factorize(early_stage_factor1['Factor_Value_Quant'])[0]
-early_stage_factor2['Factor_Value_Quant1'] = pd.factorize(early_stage_factor2['Factor_Value_Quant'])[0]
-early_stage_factor3['Factor_Value_Quant1'] = pd.factorize(early_stage_factor3['Factor_Value_Quant'])[0]
-early_stage_factor4['Factor_Value_Quant1'] = pd.factorize(early_stage_factor4['Factor_Value_Quant'])[0]
-
-
-early_stage_factor1.drop('Factor_Value_Qual', axis=1, inplace=True)
-early_stage_factor2.drop('Factor_Value_Qual', axis=1, inplace=True)
-early_stage_factor3.drop('Factor_Value_Qual', axis=1, inplace=True)
-early_stage_factor4.drop('Factor_Value_Qual', axis=1, inplace=True)
-
-
-early_stage_factor1.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-early_stage_factor2.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-early_stage_factor3.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-early_stage_factor4.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-
-
-early_stage_factor5 = early_stage_all.loc[early_stage_all.Factor_Name == 'Business and Revenue Model']
-early_stage_factor6 = early_stage_all.loc[early_stage_all.Factor_Name == 'Industry / Funding and Regulatory Environment']
-early_stage_factor7 = early_stage_all.loc[early_stage_all.Factor_Name == 'Management / Ownership Quality']
-early_stage_factor8 = early_stage_all.loc[early_stage_all.Factor_Name == 'Access to Capital & Financial Health']
-
-
-early_stage_factor5['Factor_Value_Qual1'] = pd.factorize(early_stage_factor5['Factor_Value_Qual'])[0]
-early_stage_factor6['Factor_Value_Qual1'] = pd.factorize(early_stage_factor6['Factor_Value_Qual'])[0]
-early_stage_factor7['Factor_Value_Qual1'] = pd.factorize(early_stage_factor7['Factor_Value_Qual'])[0]
-early_stage_factor8['Factor_Value_Qual1'] = pd.factorize(early_stage_factor8['Factor_Value_Qual'])[0]
-
-
-early_stage_factor5.drop('Factor_Value_Quant', axis=1, inplace=True)
-early_stage_factor6.drop('Factor_Value_Quant', axis=1, inplace=True)
-early_stage_factor7.drop('Factor_Value_Quant', axis=1, inplace=True)
-early_stage_factor8.drop('Factor_Value_Quant', axis=1, inplace=True)
-
-early_stage_factor5.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-early_stage_factor6.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-early_stage_factor7.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-early_stage_factor8.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-
-
-
-
-early_stage_factor1_1 = early_stage_factor1.rename(columns = {'Factor_Value': 'Net_Margin' })
-early_stage_factor2_1 = early_stage_factor2.rename(columns = {'Factor_Value': 'Scale' })
-early_stage_factor3_1 = early_stage_factor3.rename(columns = {'Factor_Value': 'Cap_Structure' })
-early_stage_factor4_1 = early_stage_factor4.rename(columns = {'Factor_Value': 'TDEBITDA' })
-
-
-early_stage_factor5_1 = early_stage_factor5.rename(columns = {'Factor_Value': 'Business' })
-early_stage_factor6_1 = early_stage_factor6.rename(columns = {'Factor_Value': 'Industry' })
-early_stage_factor7_1 = early_stage_factor7.rename(columns = {'Factor_Value': 'Management' })
-early_stage_factor8_1 = early_stage_factor8.rename(columns = {'Factor_Value': 'Capital' })
-
-early_stage_factor1_2 = early_stage_factor1_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-early_stage_factor2_2 = early_stage_factor2_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-early_stage_factor3_2 = early_stage_factor3_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-early_stage_factor4_2 = early_stage_factor4_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-
-early_stage_factor5_2 = early_stage_factor5_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-early_stage_factor6_2 = early_stage_factor6_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-early_stage_factor7_2 = early_stage_factor7_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-early_stage_factor8_2 = early_stage_factor8_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-
-
-
-
-
-early_stage_all2 = pd.merge(early_stage_factor1_2, early_stage_factor2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-early_stage_all3 = pd.merge(early_stage_all2, early_stage_factor3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-early_stage_all4 = pd.merge(early_stage_all3, early_stage_factor4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-early_stage_all5 = pd.merge(early_stage_all4, early_stage_factor5_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-early_stage_all6 = pd.merge(early_stage_all5, early_stage_factor6_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-early_stage_all7 = pd.merge(early_stage_all6, early_stage_factor7_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-early_stage_final = pd.merge(early_stage_all7, early_stage_factor8_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-
-
-
-
-
-
-
-early_stage_final2 = early_stage_final.drop_duplicates().copy()
-
-early_stage_final2['Date'] = pd.to_datetime(early_stage_final2['Date'])
-
-early_stage_final2['loaddt'] = early_stage_final2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-early_stage_final2 = early_stage_final2.rename(columns = { 'CIF': 'cif'})
-early_stage_final3 = early_stage_final2.copy()
-
-
-
-
-# %%
-#Early Stage Benchmark
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-early_stage_factor_benchmark1 = early_stage_all_benchmark.loc[early_stage_all_benchmark.Factor_Name == 'Net Margin %']
-early_stage_factor_benchmark2 = early_stage_all_benchmark.loc[early_stage_all_benchmark.Factor_Name == 'Revenue (Thousands)']
-early_stage_factor_benchmark3 = early_stage_all_benchmark.loc[early_stage_all_benchmark.Factor_Name == 'Capital Structure']
-early_stage_factor_benchmark4 = early_stage_all_benchmark.loc[early_stage_all_benchmark.Factor_Name == 'Total Funded Debt to EBITDA']
-
-early_stage_factor_benchmark1['Factor_Value_Quant1'] = pd.factorize(early_stage_factor_benchmark1['Factor_Value_Quant'])[0]
-early_stage_factor_benchmark2['Factor_Value_Quant1'] = pd.factorize(early_stage_factor_benchmark2['Factor_Value_Quant'])[0]
-early_stage_factor_benchmark3['Factor_Value_Quant1'] = pd.factorize(early_stage_factor_benchmark3['Factor_Value_Quant'])[0]
-early_stage_factor_benchmark4['Factor_Value_Quant1'] = pd.factorize(early_stage_factor_benchmark4['Factor_Value_Quant'])[0]
-
-
-
-early_stage_factor_benchmark1.drop('Factor_Value_Qual', axis=1, inplace=True)
-early_stage_factor_benchmark2.drop('Factor_Value_Qual', axis=1, inplace=True)
-early_stage_factor_benchmark3.drop('Factor_Value_Qual', axis=1, inplace=True)
-early_stage_factor_benchmark4.drop('Factor_Value_Qual', axis=1, inplace=True)
-
-
-early_stage_factor_benchmark1.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-early_stage_factor_benchmark2.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-early_stage_factor_benchmark3.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-early_stage_factor_benchmark4.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-
-
-early_stage_factor_benchmark5 = early_stage_all_benchmark.loc[early_stage_all_benchmark.Factor_Name == 'Business and Revenue Model']
-early_stage_factor_benchmark6 = early_stage_all_benchmark.loc[early_stage_all_benchmark.Factor_Name == 'Industry / Funding and Regulatory Environment']
-early_stage_factor_benchmark7 = early_stage_all_benchmark.loc[early_stage_all_benchmark.Factor_Name == 'Management / Ownership Quality']
-early_stage_factor_benchmark8 = early_stage_all_benchmark.loc[early_stage_all_benchmark.Factor_Name == 'Access to Capital & Financial Health']
-
-early_stage_factor_benchmark5['Factor_Value_Qual1'] = pd.factorize(early_stage_factor_benchmark5['Factor_Value_Qual'])[0]
-early_stage_factor_benchmark6['Factor_Value_Qual1'] = pd.factorize(early_stage_factor_benchmark6['Factor_Value_Qual'])[0]
-early_stage_factor_benchmark7['Factor_Value_Qual1'] = pd.factorize(early_stage_factor_benchmark7['Factor_Value_Qual'])[0]
-early_stage_factor_benchmark8['Factor_Value_Qual1'] = pd.factorize(early_stage_factor_benchmark8['Factor_Value_Qual'])[0]
-
-
-
-
-early_stage_factor_benchmark5.drop('Factor_Value_Quant', axis=1, inplace=True)
-early_stage_factor_benchmark6.drop('Factor_Value_Quant', axis=1, inplace=True)
-early_stage_factor_benchmark7.drop('Factor_Value_Quant', axis=1, inplace=True)
-early_stage_factor_benchmark8.drop('Factor_Value_Quant', axis=1, inplace=True)
-
-early_stage_factor_benchmark5.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-early_stage_factor_benchmark6.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-early_stage_factor_benchmark7.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-early_stage_factor_benchmark8.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-
-
-
-
-early_stage_factor_benchmark1_1 = early_stage_factor_benchmark1.rename(columns = {'Factor_Value': 'Net_Margin' })
-early_stage_factor_benchmark2_1 = early_stage_factor_benchmark2.rename(columns = {'Factor_Value': 'Scale' })
-early_stage_factor_benchmark3_1 = early_stage_factor_benchmark3.rename(columns = {'Factor_Value': 'Cap_Structure' })
-early_stage_factor_benchmark4_1 = early_stage_factor_benchmark4.rename(columns = {'Factor_Value': 'TDEBITDA' })
-
-
-early_stage_factor_benchmark5_1 = early_stage_factor_benchmark5.rename(columns = {'Factor_Value': 'Business' })
-early_stage_factor_benchmark6_1 = early_stage_factor_benchmark6.rename(columns = {'Factor_Value': 'Industry' })
-early_stage_factor_benchmark7_1 = early_stage_factor_benchmark7.rename(columns = {'Factor_Value': 'Management' })
-early_stage_factor_benchmark8_1 = early_stage_factor_benchmark8.rename(columns = {'Factor_Value': 'Capital' })
-
-early_stage_factor_benchmark1_2 = early_stage_factor_benchmark1_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-early_stage_factor_benchmark2_2 = early_stage_factor_benchmark2_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-early_stage_factor_benchmark3_2 = early_stage_factor_benchmark3_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-early_stage_factor_benchmark4_2 = early_stage_factor_benchmark4_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-
-early_stage_factor_benchmark5_2 = early_stage_factor_benchmark5_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-early_stage_factor_benchmark6_2 = early_stage_factor_benchmark6_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-early_stage_factor_benchmark7_2 = early_stage_factor_benchmark7_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-early_stage_factor_benchmark8_2 = early_stage_factor_benchmark8_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-
-
-
-
-early_stage_all_benchmark2 = pd.merge(early_stage_factor_benchmark1_2, early_stage_factor_benchmark2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-early_stage_all_benchmark3 = pd.merge(early_stage_all_benchmark2, early_stage_factor_benchmark3_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-early_stage_all_benchmark4 = pd.merge(early_stage_all_benchmark3, early_stage_factor_benchmark4_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-early_stage_all_benchmark5 = pd.merge(early_stage_all_benchmark4, early_stage_factor_benchmark5_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-early_stage_all_benchmark6 = pd.merge(early_stage_all_benchmark5, early_stage_factor_benchmark6_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-early_stage_all_benchmark7 = pd.merge(early_stage_all_benchmark6, early_stage_factor_benchmark7_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-early_stage_final_benchmark = pd.merge(early_stage_all_benchmark7, early_stage_factor_benchmark8_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-
-
-
-
-
-
-
-early_stage_final_benchmark2 = early_stage_final_benchmark.drop_duplicates().copy()
-
-early_stage_final_benchmark2['Date'] = pd.to_datetime(early_stage_final_benchmark2['Date'])
-
-early_stage_final_benchmark2['loaddt'] = early_stage_final_benchmark2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-early_stage_final_benchmark2 = early_stage_final_benchmark2.rename(columns = { 'CIF': 'cif'})
-early_stage_final_benchmark3 = early_stage_final_benchmark2.copy()
-
-
-
-
-# %%
-#GFB Firm
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-gfb_firm_factor1 = gfb_firm_all.loc[gfb_firm_all.Factor_Name == 'Leverage - Short Term Obligations to Revenue (%)']
-gfb_firm_factor2 = gfb_firm_all.loc[gfb_firm_all.Factor_Name == 'Coverage - 4-year Debt Service Coverage']
-
-gfb_firm_factor1['Factor_Value_Quant1'] = pd.factorize(gfb_firm_factor1['Factor_Value_Quant'])[0]
-gfb_firm_factor2['Factor_Value_Quant1'] = pd.factorize(gfb_firm_factor2['Factor_Value_Quant'])[0]
-
-
-gfb_firm_factor1.drop('Factor_Value_Qual', axis=1, inplace=True)
-gfb_firm_factor2.drop('Factor_Value_Qual', axis=1, inplace=True)
-
-gfb_firm_factor1.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-gfb_firm_factor2.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-
-
-gfb_firm_factor6 = gfb_firm_all.loc[gfb_firm_all.Factor_Name == 'Management Evaluation']
-gfb_firm_factor7 = gfb_firm_all.loc[gfb_firm_all.Factor_Name == 'Management Fee Stream Quality']
-gfb_firm_factor8 = gfb_firm_all.loc[gfb_firm_all.Factor_Name == 'Fund Benchmarking']
-gfb_firm_factor9 = gfb_firm_all.loc[gfb_firm_all.Factor_Name == 'Ability to Raise Funds']
-
-
-gfb_firm_factor6['Factor_Value_Qual1'] = pd.factorize(gfb_firm_factor6['Factor_Value_Qual'])[0]
-gfb_firm_factor7['Factor_Value_Qual1'] = pd.factorize(gfb_firm_factor7['Factor_Value_Qual'])[0]
-gfb_firm_factor8['Factor_Value_Qual1'] = pd.factorize(gfb_firm_factor8['Factor_Value_Qual'])[0]
-gfb_firm_factor9['Factor_Value_Qual1'] = pd.factorize(gfb_firm_factor9['Factor_Value_Qual'])[0]
-
-
-gfb_firm_factor6.drop('Factor_Value_Quant', axis=1, inplace=True)
-gfb_firm_factor7.drop('Factor_Value_Quant', axis=1, inplace=True)
-gfb_firm_factor8.drop('Factor_Value_Quant', axis=1, inplace=True)
-gfb_firm_factor9.drop('Factor_Value_Quant', axis=1, inplace=True)
-
-gfb_firm_factor6.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-gfb_firm_factor7.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-gfb_firm_factor8.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-gfb_firm_factor9.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-
-
-
-
-gfb_firm_factor1_1 = gfb_firm_factor1.rename(columns = {'Factor_Value': 'Leverage' })
-gfb_firm_factor2_1 = gfb_firm_factor2.rename(columns = {'Factor_Value': 'Coverage' })
-
-
-gfb_firm_factor6_1 = gfb_firm_factor6.rename(columns = {'Factor_Value': 'Management' })
-gfb_firm_factor7_1 = gfb_firm_factor7.rename(columns = {'Factor_Value': 'Fee' })
-gfb_firm_factor8_1 = gfb_firm_factor8.rename(columns = {'Factor_Value': 'Benchmarking' })
-gfb_firm_factor9_1 = gfb_firm_factor9.rename(columns = {'Factor_Value': 'Fundraising' })
-
-gfb_firm_factor1_2 = gfb_firm_factor1_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-gfb_firm_factor2_2 = gfb_firm_factor2_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-
-
-
-gfb_firm_factor6_2 = gfb_firm_factor6_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-gfb_firm_factor7_2 = gfb_firm_factor7_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-gfb_firm_factor8_2 = gfb_firm_factor8_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-gfb_firm_factor9_2 = gfb_firm_factor9_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-
-
-
-gfb_firm_all2 = pd.merge(gfb_firm_factor1_2, gfb_firm_factor2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-gfb_firm_all3 = pd.merge(gfb_firm_all2, gfb_firm_factor6_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-gfb_firm_all4 = pd.merge(gfb_firm_all3, gfb_firm_factor7_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-gfb_firm_all5 = pd.merge(gfb_firm_all4, gfb_firm_factor8_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-gfb_firm_final = pd.merge(gfb_firm_all5, gfb_firm_factor9_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-
-
-
-
-
-
-gfb_firm_final2 = gfb_firm_final.drop_duplicates().copy()
-
-gfb_firm_final2['Date'] = pd.to_datetime(gfb_firm_final2['Date'])
-
-gfb_firm_final2['loaddt'] = gfb_firm_final2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-gfb_firm_final2 = gfb_firm_final2.rename(columns = { 'CIF': 'cif'})
-gfb_firm_final3 = gfb_firm_final2.copy()
-
-
-
-
-# %%
-#GFB Firm Benchmark
-
-#rename fields, Split single factor value column into 4 separate columns
-#rejoin into single table and transform date into month end date
-#join with default data 
-
-gfb_firm_factor_benchmark1 = gfb_firm_all_benchmark.loc[gfb_firm_all_benchmark.Factor_Name == 'Leverage - Short Term Obligations to Revenue (%)']
-gfb_firm_factor_benchmark2 = gfb_firm_all_benchmark.loc[gfb_firm_all_benchmark.Factor_Name == 'Coverage - 4-year Debt Service Coverage']
-
-
-gfb_firm_factor_benchmark1['Factor_Value_Quant1'] = pd.factorize(gfb_firm_factor_benchmark1['Factor_Value_Quant'])[0]
-gfb_firm_factor_benchmark2['Factor_Value_Quant1'] = pd.factorize(gfb_firm_factor_benchmark2['Factor_Value_Quant'])[0]
-
-gfb_firm_factor_benchmark1.drop('Factor_Value_Qual', axis=1, inplace=True)
-gfb_firm_factor_benchmark2.drop('Factor_Value_Qual', axis=1, inplace=True)
-
-gfb_firm_factor_benchmark1.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-gfb_firm_factor_benchmark2.rename(columns = {'Factor_Value_Quant1': 'Factor_Value' }, inplace = True)
-
-
-gfb_firm_factor_benchmark6 = gfb_firm_all_benchmark.loc[gfb_firm_all_benchmark.Factor_Name == 'Management Evaluation']
-gfb_firm_factor_benchmark7 = gfb_firm_all_benchmark.loc[gfb_firm_all_benchmark.Factor_Name == 'Management Fee Stream Quality']
-gfb_firm_factor_benchmark8 = gfb_firm_all_benchmark.loc[gfb_firm_all_benchmark.Factor_Name == 'Fund Benchmarking']
-gfb_firm_factor_benchmark9 = gfb_firm_all_benchmark.loc[gfb_firm_all_benchmark.Factor_Name == 'Ability to Raise Funds']
-
-
-gfb_firm_factor_benchmark6['Factor_Value_Qual1'] = pd.factorize(gfb_firm_factor_benchmark6['Factor_Value_Qual'])[0]
-gfb_firm_factor_benchmark7['Factor_Value_Qual1'] = pd.factorize(gfb_firm_factor_benchmark7['Factor_Value_Qual'])[0]
-gfb_firm_factor_benchmark8['Factor_Value_Qual1'] = pd.factorize(gfb_firm_factor_benchmark8['Factor_Value_Qual'])[0]
-gfb_firm_factor_benchmark9['Factor_Value_Qual1'] = pd.factorize(gfb_firm_factor_benchmark9['Factor_Value_Qual'])[0]
-
-
-
-gfb_firm_factor_benchmark6.drop('Factor_Value_Quant', axis=1, inplace=True)
-gfb_firm_factor_benchmark7.drop('Factor_Value_Quant', axis=1, inplace=True)
-gfb_firm_factor_benchmark8.drop('Factor_Value_Quant', axis=1, inplace=True)
-gfb_firm_factor_benchmark9.drop('Factor_Value_Quant', axis=1, inplace=True)
-
-gfb_firm_factor_benchmark6.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-gfb_firm_factor_benchmark7.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-gfb_firm_factor_benchmark8.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-gfb_firm_factor_benchmark9.rename(columns = {'Factor_Value_Qual1': 'Factor_Value' }, inplace = True)
-
-
-
-
-gfb_firm_factor_benchmark1_1 = gfb_firm_factor_benchmark1.rename(columns = {'Factor_Value': 'Leverage' })
-gfb_firm_factor_benchmark2_1 = gfb_firm_factor_benchmark2.rename(columns = {'Factor_Value': 'Coverage' })
-
-
-gfb_firm_factor_benchmark6_1 = gfb_firm_factor_benchmark6.rename(columns = {'Factor_Value': 'Management' })
-gfb_firm_factor_benchmark7_1 = gfb_firm_factor_benchmark7.rename(columns = {'Factor_Value': 'Fee' })
-gfb_firm_factor_benchmark8_1 = gfb_firm_factor_benchmark8.rename(columns = {'Factor_Value': 'Benchmarking' })
-gfb_firm_factor_benchmark9_1 = gfb_firm_factor_benchmark9.rename(columns = {'Factor_Value': 'Fundraising' })
-
-gfb_firm_factor_benchmark1_2 = gfb_firm_factor_benchmark1_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-gfb_firm_factor_benchmark2_2 = gfb_firm_factor_benchmark2_1.drop(['Factor_Value_Quant','Factor_Name', 'Status'], axis = 1)
-
-
-
-gfb_firm_factor_benchmark6_2 = gfb_firm_factor_benchmark6_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-gfb_firm_factor_benchmark7_2 = gfb_firm_factor_benchmark7_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-gfb_firm_factor_benchmark8_2 = gfb_firm_factor_benchmark8_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-gfb_firm_factor_benchmark9_2 = gfb_firm_factor_benchmark9_1.drop(['Factor_Value_Qual','Factor_Name', 'Status'], axis = 1)
-
-
-
-gfb_firm_all_benchmark2 = pd.merge(gfb_firm_factor_benchmark1_2, gfb_firm_factor_benchmark2_2,  on = ['CIF', 'CPNumber', 'Date', 'Calc_ORR', 'Final_ORR'], how = 'inner')
-
-gfb_firm_all_benchmark3 = pd.merge(gfb_firm_all_benchmark2, gfb_firm_factor_benchmark6_2,  on = ['CIF','CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-gfb_firm_all_benchmark4 = pd.merge(gfb_firm_all_benchmark3, gfb_firm_factor_benchmark7_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-gfb_firm_all_benchmark5 = pd.merge(gfb_firm_all_benchmark4, gfb_firm_factor_benchmark8_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-gfb_firm_final_benchmark = pd.merge(gfb_firm_all_benchmark5, gfb_firm_factor_benchmark9_2,  on = ['CIF', 'CPNumber', 'Date','Calc_ORR', 'Final_ORR'], how = 'inner')
-
-
-
-
-
-
-
-
-gfb_firm_final_benchmark2 = gfb_firm_final_benchmark.drop_duplicates().copy()
-
-gfb_firm_final_benchmark2['Date'] = pd.to_datetime(gfb_firm_final_benchmark2['Date'])
-
-gfb_firm_final_benchmark2['loaddt'] = gfb_firm_final_benchmark2['Date'] + pd.tseries.offsets.MonthEnd(0)
-
-gfb_firm_final_benchmark2 = gfb_firm_final_benchmark2.rename(columns = { 'CIF': 'cif'})
-gfb_firm_final_benchmark3 = gfb_firm_final_benchmark2.copy()
-
-
-
-
-# %%
-#function for calculating population stability index 
-
-
-# PSI = Sum((Actual - Expected)*log(%Actual/%Expected))
-
-
-def calculate_psi(expected_data, actual_data, num_bins=10):
+def get_last_12_month_end_dates(last_month_end):
     """
-    Calculates the Population Stability Index (PSI) between two datasets.
-
-    Args:
-        expected_data (pd.Series or np.ndarray): The reference or "expected" data.
-        actual_data (pd.Series or np.ndarray): The current or "actual" data.
-        num_bins (int): The number of bins to use for bucketing the data.
-
-    Returns:
-        float: The calculated PSI value.
+    Generates a list of the last 12 month-end dates.
     """
-
-    # Ensure data is in a pandas Series for easier binning
-    expected_data = pd.Series(expected_data)
-    actual_data = pd.Series(actual_data)
-
-    # Create bins based on the expected data
-    bins = pd.cut(expected_data, bins=num_bins, retbins=True, duplicates='drop')[1]
-
-    # Handle cases where bins might not cover all actual data points
-    # Extend bins to include min/max of both datasets if necessary
-    min_val = min(expected_data.min(), actual_data.min())
-    max_val = max(expected_data.max(), actual_data.max())
-    bins = np.concatenate(([min_val - 1], bins[1:-1], [max_val + 1]))
-    bins = np.sort(np.unique(bins)) # Ensure unique and sorted bins
-
-    # Calculate counts and proportions for each bin
-    expected_counts = pd.cut(expected_data, bins=bins, include_lowest=True).value_counts().sort_index()
-    actual_counts = pd.cut(actual_data, bins=bins, include_lowest=True).value_counts().sort_index()
-
-    expected_pct = expected_counts / len(expected_data)
-    actual_pct = actual_counts / len(actual_data)
-
-    # Handle potential zero percentages for numerical stability
-    expected_pct = expected_pct.replace(0, 0.0001)
-    actual_pct = actual_pct.replace(0, 0.0001)
-
-    # Calculate PSI for each bin
-    psi_per_bin = (actual_pct - expected_pct) * np.log(actual_pct / expected_pct)
-
-    # Sum the PSI for all bins to get the total PSI
-    total_psi = psi_per_bin.sum()
-
-    return total_psi
-
-
-
-
-# %%
-#calculate psi for gfb ccloc portfolio 
-psi_input_gfb_ccloc = []
-col_ccloc = ['Fund_Performance',
-       'LP_Capacity', 'LP_Diversification', 'Management_Experience']
-
-for features in col_ccloc:
-        expected_data = ccloc_benchmark_final2[features].tolist()
-        actual_data = ccloc_final3[features].tolist()
-        psi_input = calculate_psi(expected_data, actual_data)
-        psi_input_gfb_ccloc.append(psi_input)
-
-# %%
-#calculate psi for nav portfolio 
-psi_input_nav = []
-
-
-col_nav = ['Exit_Environment',
-       'Asset_Diversification', 'Industry_Concentration', 'Asset_Coverage',
-       'Manager_Quality', ]
-
-for features in col_nav:
-        expected_data = nav_benchmark_final3[features].tolist()
-        actual_data = nav_final3[features].tolist()
-        psi_input = calculate_psi(expected_data, actual_data)
-        psi_input_nav.append(psi_input)
-
-# %%
-#calculate psi for gfb firm portfolio 
-psi_input_firm = []
-col_firm = ['Leverage',
-       'Coverage', 'Management', 'Fee', 'Benchmarking', 'Fundraising']
-
-for features in col_firm:
-        expected_data = gfb_firm_final_benchmark3[features].tolist()
-        actual_data = gfb_firm_final3[features].tolist()
-        psi_input = calculate_psi(expected_data, actual_data)
-        psi_input_firm.append(psi_input)
-
-# %%
-#calculate psi for large_corp portfolio 
-psi_input_large_corp = []
-col_large = ['Gross_Margin',
-       'Scale', 'TDEBITDA', 'Current_Ratio', 'FCCR', 'Capital', 'Management',
-       'Cashflow', 'Industry']
-for features in col_large:
-        expected_data = large_corp_final_benchmark3[features].tolist()
-        actual_data = large_corp_final3[features].tolist()
-        psi_input = calculate_psi(expected_data, actual_data)
-        psi_input_large_corp.append(psi_input)
-
-# %%
-#calculate psi for mid size portfolio 
-psi_input_mid_size = []
-col_mid = ['Gross_Margin',
-       'Scale', 'Cap_Structure', 'TDEBITDA', 'Business', 'Industry',
-       'Management', 'Capital']
-
-for features in col_mid:
-        expected_data = mid_size_final_benchmark3[features].tolist()
-        actual_data = mid_size_final3[features].tolist()
-        psi_input = calculate_psi(expected_data, actual_data)
-        psi_input_mid_size.append(psi_input)
-
-# %%
-#calculate psi for early stage portfolio 
-psi_input_early = []
-col_early = ['Net_Margin',
-       'Scale', 'Cap_Structure', 'TDEBITDA', 'Business', 'Industry',
-       'Management', 'Capital']
-
-for features in col_early:
-        expected_data = early_stage_final_benchmark3[features].tolist()
-        actual_data = early_stage_final3[features].tolist()
-        psi_input = calculate_psi(expected_data, actual_data)
-        psi_input_early.append(psi_input)
-
-# %%
-# exporting results
-
-col_name = ['Factor', 'PSI_Value']
-
-
-
-ccloc_zipped = list(zip(col_ccloc, psi_input_gfb_ccloc))
-nav_zipped = list(zip(col_nav, psi_input_nav))
-firm_zipped = list(zip(col_firm, psi_input_firm))
-large_zipped = list(zip(col_large, psi_input_large_corp))
-mid_zipped = list(zip(col_mid, psi_input_mid_size))
-early_zipped = list(zip(col_early, psi_input_early))
-
-
-
-df_ccloc = pd.DataFrame(ccloc_zipped, columns=col_name)
-df_nav = pd.DataFrame(nav_zipped, columns=col_name)
-df_firm = pd.DataFrame(firm_zipped, columns=col_name)
-df_large = pd.DataFrame(large_zipped, columns=col_name)
-df_mid = pd.DataFrame(mid_zipped, columns=col_name)
-df_early = pd.DataFrame(early_zipped, columns=col_name)
-
-
-df_ccloc.to_csv('ccloc_input_psi.csv')
-df_nav.to_csv('nav_input_psi.csv')
-df_firm.to_csv('firm_input_psi.csv')
-df_large.to_csv('large_input_psi.csv')
-df_mid.to_csv('mid_input_psi.csv')
-df_early.to_csv('early_input_psi.csv')
-
-# %%
-for features in col_nav: 
-    expected_data = nav_benchmark_final3[features]
-    #actual_data = nav_final3[features].tolist()
-    #Calculate quartiles and IQR
-    Q1 = expected_data.quantile(0.25)
-    Q3 = expected_data.quantile(0.75)
-    IQR = Q3 - Q1
-
-    # Define bounds for outlier detection
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-
-    # Remove outliers
-    filtered_data = expected_data[(expected_data >= lower_bound) & (expected_data <= upper_bound)]
-
-
-
-
-    #plt.xlabel = 'Variable'
-    #plt.ylabel = 'Frequency'
     
-    plt.hist(filtered_data,bins = 30,  color = 'orange', edgecolor = 'black' )
-    plt.title('GFB NAV_' + features + '_benchmark_data')
+    month_end_dates = []
+
+    # Start from the end of the previous month
+
     
-    plt.savefig('GFB NAV_' + features + '_benchmark_data' + '.jpg')
-    plt.show()
-    
-    plt.close()
     
 
+    for _ in range(12):
+        month_end_dates.append(last_month_end)
+        # Move to the end of the previous month
+        last_month_end = last_month_end.replace(day=1) - relativedelta(days=1)
+        # Sort to get them in chronological order
+        sorted(month_end_dates)
+        me_date_string_list = list(map(lambda x: x.strftime("%m/%d/%Y"), month_end_dates))
+
+    return me_date_string_list 
+
+
+
+
+# %% [markdown]
+# #### Create a KPI dictionary with the KPIs that are being processed in this segment of the KPI code 
+
 # %%
-for features in col_nav: 
-    #expected_data = nav_benchmark_final3[features].tolist()
-    actual_data = nav_final3[features]
-    #Calculate quartiles and IQR
-    Q1 = actual_data.quantile(0.25)
-    Q3 = actual_data.quantile(0.75)
-    IQR = Q3 - Q1
+kpi_dict1 = {'KPI 1'	: 'Number of Overrides',
 
-    # Define bounds for outlier detection
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-
-    # Remove outliers
-    filtered_data = actual_data[(actual_data >= lower_bound) & (actual_data <= upper_bound)]
+'KPI 2' :	'Accuracy',
+'KPI 3':	'Gini',
+'KPI 4'	: 'KS Statistic' 
+ }
 
 
 
 
-    #plt.xlabel = 'Variable'
-    #plt.ylabel = 'Frequency'
+# %% [markdown]
+# #### Check the quarter end date and quarter being processed in this run 
+
+# %% [markdown]
+# #### Establish connection to SQL server
+
+# %%
+conn = pyodbc.connect('Driver={SQL Server};'
+                      'Server=SQLAG-CRDMPRD-L.CORP.SVBANK.COM,1433;'
+                      'Database=CRDADMANALYSIS;'
+                      'Schema=dbo'
+                      'Trusted_Connection=yes;')
+
+
+conn2 = pyodbc.connect('Driver={SQL Server};'
+                      'Server=SQLAG-CRDMPRD-L.CORP.SVBANK.COM,1433;'
+                      'Database=CRDADMPRD;'
+                      'Schema=dbo'
+                      'Trusted_Connection=yes;')
+
+#Step 1
+# Connection to sql server
+#password = cyberArk_automation_v1.main()
+#conn = pyodbc.connect('Driver={ODBC Driver 18 for SQL Server};'
+                      #'Server=10.108.24.101,1436;'
+                      #'Server=10.108.24.61,1435;'
+                      #'Database=CRDADMANALYSIS;'
+                      #'UID=svc.cdmdrr;'
+                      #'PWD='+password+';'
+                      #'Schema=dbo;'
+                      #'TrustServerCertificate=yes;')
+
+
+
+# %% [markdown]
+# #### This code segment is to extract dataset for troubleshooting in case a deep dive into the KPIs is required
+
+# %%
+# extracting data for troubleshooting. Not used for calculations of KPIs
+
+sql_override_all = """
+
+
+select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
+                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'Innovation > $75MM & Sponsor – CF', 
+    'Innovation > $75MM & Sponsor – ID/BS', 'Innovation > $15MM up to $75MM',
+      'Innovation up to $15MM','CCLOC', 'NAV', 'GFB Firm' )	
+
+     	
+      		
+				
+				and b.DATE_APPROVED < '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+                
+                
     
-    plt.hist(filtered_data,bins = 30,  color = 'orange', edgecolor = 'black' )
-    plt.title('GFB NAV_' + features + '_predict_data')
     
-    plt.savefig('GFB NAV_' + features + '_predict_data' + '.jpg')
-    plt.show()
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+
+# %%
+# data only used for troubleshooting. Not used for calculation of KPIs
+
+override_all = pd.DataFrame(pd.read_sql_query(sql_override_all, conn))
+
+print(override_all.shape)
+override_all.to_csv('override_all_innovation_v2.csv')
+
+# %% [markdown]
+# #### Portfolio Data for ORR for each Month End in 12M Evaluation Period
+
+# %%
+last_12_month_ends = get_last_12_month_end_dates(last_month_end)
+last_12_month_ends1 = "', '".join(last_12_month_ends)
+
+
+sql_port_12m = """SET NOCOUNT ON
+
+select  loaddt as MonthEnd, CIF, max(CL_OBLIGOR_RISK_RATING) as orr1 
+
+
+from [CRDADMPRD].[dbo].[CDM_CREDIT_LINES_VIEW]
+
+where loaddt in ('{last_12_month_ends1}')
+
+group by loaddt, cif
+
+
+
+
+
+
+
+
+
+
+""".format(last_12_month_ends1=last_12_month_ends1)
+
+
+last_12_ports = pd.DataFrame(pd.read_sql_query(sql_port_12m, conn))
+
+last_12_ports['MonthEnd'] = pd.to_datetime(last_12_ports['MonthEnd']).dt.strftime("%m/%d/%Y")
+
+# %% [markdown]
+# #### Section 1: PD Models Override - In this segment data is extracted for overrides per risk template for the evaluation period.  
+
+# %%
+# calculating overrides for DRR Large Corp
+
+large_corp_kpi = []
+num_override_tot = []
+# DRR Large Corp 
+
+
+
+sql_override = """
+
+select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
+                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'Innovation > $75MM & Sponsor – CF', 
+    'Innovation > $75MM & Sponsor – ID/BS')	
+
+     	
+      		
+				
+				and b.DATE_APPROVED > '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+
+# using sql code above to extract data to calculate override KPI
+
+override_large_corp_raw = pd.DataFrame(pd.read_sql_query(sql_override, conn))
+
+#saving list of unique cifs in the evaluation period for calculation of other KPIs 
+
+cif_list_large_kpi = override_large_corp_raw.CIF.unique()
+
+print(override_large_corp_raw.shape)
+
+
+
+#create  a month end column for the most proximate month end for each date approved
+
+override_large_corp_raw['DATE_APPROVED'] = pd.to_datetime(override_large_corp_raw['DATE_APPROVED'])
+override_large_corp_raw['MonthEnd'] = override_large_corp_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+override_large_corp_raw['MonthEnd'] = override_large_corp_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+
+combined_override_large = pd.merge(override_large_corp_raw, last_12_ports, on=['CIF', 'MonthEnd'], how='left')
+
+
+#subset the data that doesn't occur in the portfolio (Nan value for ORR) or where the final ORR is 
+#not the same as portfolio ORR
+
+override_large_corp = combined_override_large[combined_override_large['orr1'].notna()]
+override_large_corp = override_large_corp[override_large_corp.orr1 == override_large_corp.FINAL_ORR]
     
-    plt.close()
+#calculate override percentage based on difference_of_calc_and_final_orr field
+
+
+override_large_corp['OVERRIDE_INDICATOR'] = 0
+    
+override_large_corp.loc[override_large_corp['DIFFERENCE_OF_CALC_AND_FINAL_ORR'] != 0, 'OVERRIDE_INDICATOR'] = 1
+override_by_drr_large = override_large_corp.groupby("FINAL_ORR")["OVERRIDE_INDICATOR"].mean()
+override_by_drr_large = override_by_drr_large.reset_index()
+override_by_drr_large['FINAL_ORR'] = override_by_drr_large['FINAL_ORR'].astype(int)
+override_by_drr_large = override_by_drr_large.sort_values(by='FINAL_ORR')
+override_by_drr_large2 = list(override_by_drr_large['OVERRIDE_INDICATOR'])
+
+
+num_of_overrides = override_large_corp[override_large_corp.DIFFERENCE_OF_CALC_AND_FINAL_ORR != 0]
+total_override = num_of_overrides.shape[0]
+print(total_override)
+num_override_tot.append(total_override)
+
+total_override1 = total_override/override_large_corp.shape[0]
+try: 
+    total_override_mid1 = total_override/override_large_corp.shape[0]
+except ZeroDivisionError:
+    total_override1 = 0
+    
+large_corp_kpi.append(total_override1)
+
+
+# %%
+cif_list_large_df = pd.DataFrame(cif_list_large_kpi)
+cif_list_large_df.to_csv('cif_list_large_df.csv')
+override_large_corp.to_csv('override_large_corp_reasons.csv')
+override_by_drr_large.to_csv('override_by_drr_large.csv')
+
+# %%
+# DRR Mid Size 
+mid_kpi = []
+
+sql_override3 = """
+
+select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
+                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in (  'Innovation > $15MM up to $75MM' )	
+
+     	
+      		
+				
+				and b.DATE_APPROVED > '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior = month_end_12m_prior)
+
+
+
+override_mid_raw = pd.read_sql_query(sql_override3, conn)
+cif_list_mid_kpi = override_mid_raw.CIF.unique()
+
+    
+
+
+#create  a month end column for the most proximate month end for each date APPROVED
+
+override_mid_raw['DATE_APPROVED'] = pd.to_datetime(override_mid_raw['DATE_APPROVED'])
+override_mid_raw['MonthEnd'] = override_mid_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+override_mid_raw['MonthEnd'] = override_mid_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+
+combined_override_mid = pd.merge(override_mid_raw, last_12_ports, on=['CIF', 'MonthEnd'], how='left')
+
+
+#subset the data that doesn't occur in the portfolio (Nan value for ORR) or where the final ORR is 
+#not the same as portfolio ORR
+
+override_mid = combined_override_mid[combined_override_mid['orr1'].notna()]
+override_mid = override_mid[override_mid.orr1 == override_mid.FINAL_ORR]
+
+   
+override_mid['OVERRIDE_INDICATOR'] = 0
+    
+override_mid.loc[override_mid['DIFFERENCE_OF_CALC_AND_FINAL_ORR'] != 0, 'OVERRIDE_INDICATOR'] = 1
+override_by_drr_mid = override_mid.groupby("FINAL_ORR")["OVERRIDE_INDICATOR"].mean()
+override_by_drr_mid = override_by_drr_mid.reset_index()
+override_by_drr_mid['FINAL_ORR'] = override_by_drr_mid['FINAL_ORR'].astype(int)
+override_by_drr_mid = override_by_drr_mid.sort_values(by='FINAL_ORR')
+override_by_drr_mid2 = list(override_by_drr_mid['OVERRIDE_INDICATOR'])
+    
+num_of_overrides_mid = override_mid[override_mid.DIFFERENCE_OF_CALC_AND_FINAL_ORR != 0]
+total_override_mid = num_of_overrides_mid.shape[0]
+    
+try: 
+    total_override_mid1 = total_override_mid/override_mid.shape[0]
+except ZeroDivisionError:
+    total_override_mid1 = 0
+    
+mid_kpi.append(total_override_mid1)
+num_override_tot.append(total_override_mid)
+
+
+
+# %%
+cif_list_mid_df = pd.DataFrame(cif_list_mid_kpi)
+cif_list_mid_df.to_csv('cif_list_mid_df.csv')
+override_mid.to_csv('override_mid_reasons.csv')
+override_by_drr_mid.to_csv('override_by_drr_mid.csv')
+
+# %%
+# DRR Early Stage 
+
+early_kpi = []
+
+sql_override2 = """
+
+select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
+                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'Innovation up to $15MM' )	
+
+     	
+      		
+				
+				and b.DATE_APPROVED > '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+
+override_early_stage_raw = pd.read_sql_query(sql_override2, conn)
+cif_list_early_kpi = override_early_stage_raw.CIF.unique()
+
+#create  a month end column for the most proximate month end for each date approved
+
+override_early_stage_raw['DATE_APPROVED'] = pd.to_datetime(override_early_stage_raw['DATE_APPROVED'])
+override_early_stage_raw['MonthEnd'] = override_early_stage_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+override_early_stage_raw['MonthEnd'] = override_early_stage_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+
+combined_override_early = pd.merge(override_early_stage_raw, last_12_ports, on=['CIF', 'MonthEnd'], how='left')
+
+
+#subset the data that doesn't occur in the portfolio (Nan value for ORR) or where the final ORR is 
+#not the same as portfolio ORR
+
+override_early_stage = combined_override_early[combined_override_early['orr1'].notna()]
+override_early_stage = override_early_stage[override_early_stage.orr1 == override_early_stage.FINAL_ORR]
+
+
+override_early_stage['OVERRIDE_INDICATOR'] = 0
+    
+override_early_stage.loc[override_early_stage['DIFFERENCE_OF_CALC_AND_FINAL_ORR'] != 0, 'OVERRIDE_INDICATOR'] = 1
+override_by_drr_early = override_early_stage.groupby("FINAL_ORR")["OVERRIDE_INDICATOR"].mean()
+
+override_by_drr_early = override_by_drr_early.reset_index()
+override_by_drr_early['FINAL_ORR'] = override_by_drr_early['FINAL_ORR'].astype(int)
+override_by_drr_early = override_by_drr_early.sort_values(by='FINAL_ORR')
+override_by_drr_early2 = list(override_by_drr_early['OVERRIDE_INDICATOR'])
+
+num_of_overrides_early_stage = override_early_stage[override_early_stage.DIFFERENCE_OF_CALC_AND_FINAL_ORR != 0]
+total_override_early_stage = num_of_overrides_early_stage.shape[0]
+num_override_tot.append(total_override_early_stage)
+
+try: 
+    total_override_early_stage1 = total_override_early_stage/override_early_stage.shape[0]
+except ZeroDivisionError: 
+    total_override_early_stage1 = 0
+
+early_kpi.append(total_override_early_stage1)
+ 
+
+
+
+# %%
+cif_list_early_df = pd.DataFrame(cif_list_early_kpi)
+cif_list_early_df.to_csv('cif_list_early_df.csv')
+override_early_stage.to_csv('override_early_reasons.csv')
+override_by_drr_early.to_csv('override_by_drr_early.csv')
+
+# %%
+# DRR GFB Firm 
+
+firm_kpi = []
+
+sql_override4 = """
+
+select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
+                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'GFB Firm' )	
+
+     	
+      		
+				
+				and b.DATE_APPROVED > '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+""".format(month_end_12m_prior=month_end_12m_prior)
+
+override_Firm_raw = pd.read_sql_query(sql_override4, conn)
+cif_list_firm_kpi = override_Firm_raw.CIF.unique()
+
+#create  a month end column for the most proximate month end for each date approved
+
+override_Firm_raw['DATE_APPROVED'] = pd.to_datetime(override_Firm_raw['DATE_APPROVED'])
+override_Firm_raw['MonthEnd'] = override_Firm_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+override_Firm_raw['MonthEnd'] = override_Firm_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+
+combined_override_Firm = pd.merge(override_Firm_raw, last_12_ports, on=['CIF', 'MonthEnd'], how='left')
+
+
+#subset the data that doesn't occur in the portfolio (Nan value for ORR) or where the final ORR is 
+#not the same as portfolio ORR
+
+override_Firm = combined_override_Firm[combined_override_Firm['orr1'].notna()]
+override_Firm = override_Firm[override_Firm.orr1 == override_Firm.FINAL_ORR]
+
+
+override_Firm['OVERRIDE_INDICATOR'] = 0
+    
+override_Firm.loc[override_Firm['DIFFERENCE_OF_CALC_AND_FINAL_ORR'] != 0, 'OVERRIDE_INDICATOR'] = 1
+override_by_drr_Firm = override_Firm.groupby("FINAL_ORR")["OVERRIDE_INDICATOR"].mean()
+
+override_by_drr_Firm = override_by_drr_Firm.reset_index()
+override_by_drr_Firm['FINAL_ORR'] = override_by_drr_Firm['FINAL_ORR'].astype(int)
+override_by_drr_Firm = override_by_drr_Firm.sort_values(by='FINAL_ORR')
+override_by_drr_Firm2 = list(override_by_drr_Firm['OVERRIDE_INDICATOR'])
+
+num_of_overrides_Firm = override_Firm[override_Firm.DIFFERENCE_OF_CALC_AND_FINAL_ORR != 0]
+total_override_Firm = num_of_overrides_Firm.shape[0]
+
+
+try: 
+    total_override_Firm1 = total_override_Firm/override_Firm.shape[0]
+except ZeroDivisionError: 
+    total_override_Firm1 = 0
+
+firm_kpi.append(total_override_Firm1)
+num_override_tot.append(total_override_Firm)
+
+
+
+# %%
+cif_list_firm_df = pd.DataFrame(cif_list_firm_kpi)
+cif_list_firm_df.to_csv('cif_list_firm_df.csv')
+override_Firm.to_csv('override_firm_reasons.csv')
+override_by_drr_Firm.to_csv('override_by_drr_Firm.csv')
+
+# %%
+# DRR GFB CCLOC 
+
+ccloc_kpi = []
+
+sql_override4 = """
+
+select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
+                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'CCLOC' )	
+
+     	
+      		
+				
+				and b.DATE_APPROVED > '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+""".format(month_end_12m_prior=month_end_12m_prior)
+
+override_CCLOC_raw = pd.read_sql_query(sql_override4, conn)
+cif_list_ccloc_kpi = override_CCLOC_raw.CIF.unique()
+
+#create  a month end column for the most proximate month end for each date approved
+
+override_CCLOC_raw['DATE_APPROVED'] = pd.to_datetime(override_CCLOC_raw['DATE_APPROVED'])
+override_CCLOC_raw['MonthEnd'] = override_CCLOC_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+override_CCLOC_raw['MonthEnd'] = override_CCLOC_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+
+combined_override_CCLOC = pd.merge(override_CCLOC_raw, last_12_ports, on=['CIF', 'MonthEnd'], how='left')
+
+
+#subset the data that doesn't occur in the portfolio (Nan value for ORR) or where the final ORR is 
+#not the same as portfolio ORR
+
+override_CCLOC = combined_override_CCLOC[combined_override_CCLOC['orr1'].notna()]
+override_CCLOC = override_CCLOC[override_CCLOC.orr1 == override_CCLOC.FINAL_ORR]
+
+
+override_CCLOC['OVERRIDE_INDICATOR'] = 0
+    
+override_CCLOC.loc[override_CCLOC['DIFFERENCE_OF_CALC_AND_FINAL_ORR'] != 0, 'OVERRIDE_INDICATOR'] = 1
+override_by_drr_CCLOC = override_CCLOC.groupby("FINAL_ORR")["OVERRIDE_INDICATOR"].mean()
+
+override_by_drr_CCLOC = override_by_drr_CCLOC.reset_index()
+override_by_drr_CCLOC['FINAL_ORR'] = override_by_drr_CCLOC['FINAL_ORR'].astype(int)
+override_by_drr_CCLOC2 = override_by_drr_CCLOC.sort_values(by='FINAL_ORR')
+override_by_drr_CCLOC = list(override_by_drr_CCLOC['OVERRIDE_INDICATOR'])
+
+num_of_overrides_CCLOC = override_CCLOC[override_CCLOC.DIFFERENCE_OF_CALC_AND_FINAL_ORR != 0]
+total_override_CCLOC = num_of_overrides_CCLOC.shape[0]
+
+
+try: 
+    total_override_CCLOC1 = total_override_CCLOC/override_CCLOC.shape[0]
+except ZeroDivisionError: 
+    total_override_CCLOC1 = 0
+
+ccloc_kpi.append(total_override_CCLOC1)
+num_override_tot.append(total_override_CCLOC)
+
+
+
+# %%
+cif_list_ccloc_df = pd.DataFrame(cif_list_ccloc_kpi)
+cif_list_ccloc_df.to_csv('cif_list_ccloc_df.csv')
+override_CCLOC.to_csv('override_ccloc_reasons.csv')
+override_by_drr_CCLOC2.to_csv('override_by_drr_CCLOC2.csv')
+
+# %%
+# DRR GFB NAV
+
+nav_kpi = []
+
+sql_override5 = """ 
+
+select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
+                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'NAV' )	
+
+     	
+      		
+				
+				and b.DATE_APPROVED > '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+""".format(month_end_12m_prior=month_end_12m_prior)
+
+
+
+override_NAV_raw = pd.read_sql_query(sql_override5, conn)
+cif_list_nav_kpi = override_NAV_raw.CIF.unique()
+
+#create  a month end column for the most proximate month end for each date approved
+
+override_NAV_raw['DATE_APPROVED'] = pd.to_datetime(override_NAV_raw['DATE_APPROVED'])
+override_NAV_raw['MonthEnd'] = override_NAV_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+override_NAV_raw['MonthEnd'] = override_NAV_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+
+combined_override_NAV = pd.merge(override_NAV_raw, last_12_ports, on=['CIF', 'MonthEnd'], how='left')
+
+
+#subset the data that doesn't occur in the portfolio (Nan value for ORR) or where the final ORR is 
+#not the same as portfolio ORR
+
+override_NAV = combined_override_NAV[combined_override_NAV['orr1'].notna()]
+override_NAV = override_NAV[override_NAV.orr1 == override_NAV.FINAL_ORR]
+
+
+
+override_NAV['OVERRIDE_INDICATOR'] = 0
+    
+override_NAV.loc[override_NAV['DIFFERENCE_OF_CALC_AND_FINAL_ORR'] != 0, 'OVERRIDE_INDICATOR'] = 1
+override_by_drr_NAV = override_NAV.groupby("FINAL_ORR")["OVERRIDE_INDICATOR"].mean()
+
+override_by_drr_NAV = override_by_drr_NAV.reset_index()
+override_by_drr_NAV['FINAL_ORR'] = override_by_drr_NAV['FINAL_ORR'].astype(int)
+override_by_drr_NAV = override_by_drr_NAV.sort_values(by='FINAL_ORR')
+override_by_drr_NAV2 = list(override_by_drr_NAV['OVERRIDE_INDICATOR'])
+
+num_of_overrides_NAV = override_NAV[override_NAV.DIFFERENCE_OF_CALC_AND_FINAL_ORR != 0]
+total_override_NAV = num_of_overrides_NAV.shape[0]
+
+try: 
+    total_override_NAV1 = total_override_NAV/override_NAV.shape[0]
+
+except ZeroDivisionError: 
+    0
+
+try: 
+    total_override_NAV1 = total_override_NAV/override_NAV.shape[0]
+except ZeroDivisionError: 
+    total_override_NAV1 = 0
+
+nav_kpi.append(total_override_NAV1)
+num_override_tot.append(total_override_NAV)
+
+# %%
+print(total_override_NAV,override_NAV.shape[0])
+
+# %%
+cif_list_nav_df = pd.DataFrame(cif_list_nav_kpi)
+cif_list_nav_df.to_csv('cif_list_nav_df.csv')
+override_NAV.to_csv('override_nav_reasons.csv')
+override_by_drr_NAV.to_csv('override_by_drr_NAV.csv')
+num_override_tot = pd.DataFrame(num_override_tot)
+num_override_tot.to_csv('pd_override_12m.csv')
+
+# %% [markdown]
+# #### Section 2: PD Models Accuracy 
+
+# %%
+masterscale = pd.read_csv('masterscale.csv')
+
+# %%
+#dates when each risk rating template was implemented
+
+large_corp_date = '08-31-2023'
+
+mid_date = '04-30-2024'
+
+early_date = '04-30-2024'
+
+CCLOC_date = '01-31-2022'
+
+NAV_date = '01-31-2022'
+
+firm_date = '08-31-2023'
+
+# %%
+#excluding Loss/Grade 17 rating from the evaluation as distance to default is 0
+
+#grade_exclusion = ['15', '16', '17']
+grade_exclusion = [ ]
+
+FINAL_ORR = list(range(17))
+FINAL_ORR.pop(0)
+Predict_Default = [0]*16
+dummy_df = list(zip(FINAL_ORR, Predict_Default))
+dummy_df1 = pd.DataFrame(dummy_df, columns=['FINAL_ORR', 'Predict_Default'])
+
+
+# %%
+#Default Status Data for all Models
+
+sql_default = """
+SELECT distinct cif, loaddt, default_flag
+
+from [CRDADMPRD].[dbo].[CDM_CLIENT_DEFAULT_STATUS_VW]
+
+			where loaddt > '01-01-2024'
+        """
+
+all_default = pd.DataFrame(pd.read_sql_query(sql_default, conn))
+all_default['loaddt'] = pd.to_datetime(all_default['loaddt'])
+
+
+
+
+# %%
+#Determine if default occured within a 12 month window of observation date. If default occured
+#indicator is 1 else 0
+#as default data is reported on a monthly basis a window size of 12 indicates a 12 month performance window
+
+def distance_to_def(df):
+    df['loaddt'] = pd.to_datetime(df['loaddt'])
+    df = df.sort_values(by=['cif', 'loaddt'], ascending=[True, True])
+    df['reversed_value'] = df.groupby('cif')['default_flag'].transform(lambda x: x[::-1].values)
+    window_size = 12
+    forward_max_reversed = df.groupby('cif')['reversed_value'].transform(
+        lambda x: x.rolling(window=window_size, min_periods=1, closed='left').max())
+    
+    # 5. Reverse the results back to the original time order
+    df['defaulted_within_12mo'] = df.groupby('cif')['reversed_value'].transform(lambda x: forward_max_reversed[::-1])
+    
+    df.sort_index(inplace=True) 
+    df.rename(columns={'loaddt': 'MonthEnd', 'cif':'CIF'}, inplace=True)
+    return df 
+
+
+  
+
+
+# %%
+#Determine if default occured within months prior to risk rating approval date (excluding the actual risk rating/observation date) If default occured
+#indicator is 1 else 0
+#as default data is reported on a monthly basis a window size of 12 indicates a 12 month performance window
+
+def prior_default(df):
+    df['MonthEnd'] = pd.to_datetime(df['MonthEnd'])
+    df = df.sort_values(by=['CIF', 'MonthEnd'], ascending=[True, True])
+    
+    window_size = 12
+    df['previous_default'] = df.groupby('CIF')['default_flag'].transform(
+        lambda x: x.rolling(window=window_size, min_periods=1, closed='left').max())
+       
+    df.sort_index(inplace=True) 
+    
+    return df 
+
+# %%
+sql_large = """
+
+select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'Innovation > $75MM & Sponsor – CF', 
+    'Innovation > $75MM & Sponsor – ID/BS')	
+
+     	
+      		
+				
+				and b.DATE_APPROVED < '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+default_large_raw = pd.read_sql_query(sql_large, conn)
+default_large_raw = default_large_raw.drop_duplicates()
+default_large_raw['DATE_APPROVED'] = pd.to_datetime(default_large_raw['DATE_APPROVED'])
+default_large_raw['MonthEnd'] = default_large_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+default_large_raw['MonthEnd'] = default_large_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+default_large_raw['MonthEnd'] = pd.to_datetime(default_large_raw['MonthEnd'])
+
+#excluding the already non-performing accounts from the analysis (can be changed to excluding only defaulted obligors)
+
+
+default_large_raw = default_large_raw.loc[~default_large_raw.FINAL_ORR.isin(grade_exclusion)]
+
+large_cif = default_large_raw.CIF.unique()
+
+
+
+
+
+# %%
+#extract the default data for obligors rated under the risk rating template under evaluation
+
+default_status_large = all_default.loc[all_default.cif.isin(large_cif)]
+default_status_large = default_status_large.loc[default_status_large.loaddt > large_corp_date]
+
+#only use evaluation dates after model implementation
+
+
+
+default_large_corp1 = distance_to_def(default_status_large)
+
+
+
+default_large_corp = pd.merge(default_large_corp1 ,default_large_raw,on=['CIF', 'MonthEnd'], how='inner' )
+
+
+
+
+
+# %%
+# DRR Large Corp 
+
+default_large_corp = default_large_corp.fillna(0)
+default_large_corp['defaulted_within_12mo'] = default_large_corp['defaulted_within_12mo'].astype(int)
+
+
+large_corp_total = default_large_corp.groupby('FINAL_ORR')['CIF'].count() 
+large_corp_total = pd.DataFrame(large_corp_total)
+large_corp_total = large_corp_total.reset_index()
+large_corp_total['FINAL_ORR'] = large_corp_total['FINAL_ORR'].astype(int)
+large_corp_total = large_corp_total.sort_values(by='FINAL_ORR')
+
+
+large_corp_default = default_large_corp.groupby('FINAL_ORR')['defaulted_within_12mo'].sum()
+large_corp_default = pd.DataFrame(large_corp_default)
+large_corp_default = large_corp_default.reset_index()
+large_corp_default['FINAL_ORR'] = large_corp_default['FINAL_ORR'].astype(int)
+large_corp_default = large_corp_default.sort_values(by='FINAL_ORR')
+
+large_corp_acc = pd.merge(large_corp_total, large_corp_default, right_on = 'FINAL_ORR', left_on = 'FINAL_ORR', how = 'inner')
+
+large_corp_acc_v2 = pd.merge(dummy_df1, large_corp_acc, on='FINAL_ORR', how = 'left')
+large_corp_acc_v2 = large_corp_acc_v2.fillna(0)
+large_corp_acc_v2 = pd.merge(large_corp_acc_v2,masterscale, on = 'FINAL_ORR', how = 'left')
+large_corp_acc_v2['Predict_Default'] = large_corp_acc_v2['CIF']*large_corp_acc_v2['PD']
+
+large_corp_acc_v2['Actual_PD'] = np.where(large_corp_acc_v2['CIF'] != 0, large_corp_acc_v2['defaulted_within_12mo'] / large_corp_acc_v2['CIF'], 0)
+predicted_rate_large2 = large_corp_acc_v2['Predict_Default'].sum()/large_corp_acc_v2['CIF'].sum()
+actual_rate_large2 = large_corp_acc_v2['defaulted_within_12mo'].sum()/large_corp_acc_v2['CIF'].sum()
+MAE_large = abs(predicted_rate_large2 - actual_rate_large2)
+
+large_corp_kpi.append(MAE_large)
+
+# %%
+large_corp_acc_v2.to_csv('large_corp_actual_predict.csv')
+
+# %%
+sql_mid = """
+
+select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'Innovation > $15MM up to $75MM')	
+
+     	
+      		
+				
+				and b.DATE_APPROVED < '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+default_mid_raw = pd.read_sql_query(sql_mid, conn)
+default_mid_raw['DATE_APPROVED'] = pd.to_datetime(default_mid_raw['DATE_APPROVED'])
+default_mid_raw['MonthEnd'] = default_mid_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+default_mid_raw['MonthEnd'] = default_mid_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+default_mid_raw['MonthEnd'] = pd.to_datetime(default_mid_raw['MonthEnd'])
+
+
+#excluding the already non-performing accounts from the analysis (can be changed to excluding only defaulted obligors)
+
+
+default_mid_raw = default_mid_raw.loc[~default_mid_raw.FINAL_ORR.isin(grade_exclusion)]
+
+mid_cif = default_mid_raw.CIF.unique()
+
+
+
+# %%
+default_status_mid = all_default.loc[all_default.cif.isin(mid_cif)]
+
+default_status_mid = default_status_mid.loc[default_status_mid.loaddt > mid_date]
+
+default_mid1 = distance_to_def(default_status_mid)
+
+
+default_mid = pd.merge(default_mid1, default_mid_raw,on=['CIF', 'MonthEnd'], how='inner' )
+
+#exclude obligors that have defaulted before rating decision. 
+
+#default_mid = default_mid2.loc[default_mid2.default_flag != '1']
+
+
+# %%
+default_mid1.to_csv('default_mid.csv')
+
+# %%
+# DRR Mid Size 
+
+default_mid = default_mid.fillna(0)
+default_mid['defaulted_within_12mo'] = default_mid['defaulted_within_12mo'].astype(int)
+
+
+mid_total = default_mid.groupby('FINAL_ORR')['CIF'].count() 
+mid_total = pd.DataFrame(mid_total)
+mid_total = mid_total.reset_index()
+mid_total['FINAL_ORR'] = mid_total['FINAL_ORR'].astype(int)
+mid_total = mid_total.sort_values(by='FINAL_ORR')
+
+
+mid_default = default_mid.groupby('FINAL_ORR')['defaulted_within_12mo'].sum()
+mid_default = pd.DataFrame(mid_default)
+mid_default = mid_default.reset_index()
+mid_default['FINAL_ORR'] = mid_default['FINAL_ORR'].astype(int)
+mid_default = mid_default.sort_values(by='FINAL_ORR')
+
+mid_acc = pd.merge(mid_total, mid_default, right_on = 'FINAL_ORR', left_on = 'FINAL_ORR', how = 'inner')
+
+mid_acc_v2 = pd.merge(dummy_df1, mid_acc, on='FINAL_ORR', how = 'left')
+mid_acc_v2 = mid_acc_v2.fillna(0)
+mid_acc_v2 = pd.merge(mid_acc_v2,masterscale, on = 'FINAL_ORR', how = 'left')
+mid_acc_v2['Predict_Default'] = mid_acc_v2['CIF']*mid_acc_v2['PD']
+
+mid_acc_v2['Actual_PD'] = np.where(mid_acc_v2['CIF'] != 0, mid_acc_v2['defaulted_within_12mo'] / mid_acc_v2['CIF'], 0)
+predicted_rate_mid2 = mid_acc_v2['Predict_Default'].sum()/mid_acc_v2['CIF'].sum()
+actual_rate_mid2 = mid_acc_v2['defaulted_within_12mo'].sum()/mid_acc_v2['CIF'].sum()
+MAE_mid = abs(predicted_rate_mid2 - actual_rate_mid2)
+
+mid_kpi.append(MAE_mid)
+
+
+# %%
+mid_acc_v2.to_csv('mid_actual_predict.csv')
+
+# %%
+sql_firm = """
+
+select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'GFB Firm')	
+
+     	
+      		
+				
+				and b.DATE_APPROVED < '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+default_firm_raw = pd.read_sql_query(sql_firm, conn)
+default_firm_raw['DATE_APPROVED'] = pd.to_datetime(default_firm_raw['DATE_APPROVED'])
+default_firm_raw['MonthEnd'] = default_firm_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+default_firm_raw['MonthEnd'] = default_firm_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+default_firm_raw['MonthEnd'] = pd.to_datetime(default_firm_raw['MonthEnd'])
+
+
+#excluding the already non-performing accounts from the analysis (can be changed to excluding only defaulted obligors)
+
+
+default_firm_raw = default_firm_raw.loc[~default_firm_raw.FINAL_ORR.isin(grade_exclusion)]
+
+firm_cif = default_firm_raw.CIF.unique()
+
+
+# %%
+default_status_firm = all_default.loc[all_default.cif.isin(firm_cif)]
+
+default_status_firm = default_status_firm.loc[default_status_firm.loaddt > firm_date]
+
+default_firm1 = distance_to_def(default_status_firm)
+
+
+default_firm = pd.merge(default_firm1, default_firm_raw,on=['CIF', 'MonthEnd'], how='inner' )
+#default_firm = default_firm2.loc[default_firm2.default_flag != '1']
+
+# %%
+# DRR Firm
+
+default_Firm = default_firm.fillna(0)
+default_Firm['defaulted_within_12mo'] = default_Firm['defaulted_within_12mo'].astype(int)
+
+
+Firm_total = default_Firm.groupby('FINAL_ORR')['CIF'].count() 
+Firm_total = pd.DataFrame(Firm_total)
+Firm_total = Firm_total.reset_index()
+Firm_total['FINAL_ORR'] = Firm_total['FINAL_ORR'].astype(int)
+Firm_total = Firm_total.sort_values(by='FINAL_ORR')
+
+
+Firm_default = default_Firm.groupby('FINAL_ORR')['defaulted_within_12mo'].sum()
+Firm_default = pd.DataFrame(Firm_default)
+Firm_default = Firm_default.reset_index()
+Firm_default['FINAL_ORR'] = Firm_default['FINAL_ORR'].astype(int)
+Firm_default = Firm_default.sort_values(by='FINAL_ORR')
+
+Firm_acc = pd.merge(Firm_total, Firm_default, right_on = 'FINAL_ORR', left_on = 'FINAL_ORR', how = 'inner')
+
+Firm_acc_v2 = pd.merge(dummy_df1, Firm_acc, on='FINAL_ORR', how = 'left')
+Firm_acc_v2 = Firm_acc_v2.fillna(0)
+Firm_acc_v2 = pd.merge(Firm_acc_v2,masterscale, on = 'FINAL_ORR', how = 'left')
+Firm_acc_v2['Predict_Default'] = Firm_acc_v2['CIF']*Firm_acc_v2['PD']
+
+Firm_acc_v2['Actual_PD'] = np.where(Firm_acc_v2['CIF'] != 0, Firm_acc_v2['defaulted_within_12mo'] / Firm_acc_v2['CIF'], 0)
+predicted_rate_Firm2 = Firm_acc_v2['Predict_Default'].sum()/Firm_acc_v2['CIF'].sum()
+actual_rate_Firm2 = Firm_acc_v2['defaulted_within_12mo'].sum()/Firm_acc_v2['CIF'].sum()
+MAE_Firm = abs(predicted_rate_Firm2 - actual_rate_Firm2)
+
+firm_kpi.append(MAE_Firm)
+
+
+# %%
+Firm_acc_v2.to_csv('firm_actual_predict.csv')
+
+# %%
+sql_ccloc = """
+
+select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'CCLOC')	
+
+     	
+      		
+				
+				and b.DATE_APPROVED < '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+default_ccloc_raw = pd.read_sql_query(sql_ccloc, conn)
+default_ccloc_raw['DATE_APPROVED'] = pd.to_datetime(default_ccloc_raw['DATE_APPROVED'])
+default_ccloc_raw['MonthEnd'] = default_ccloc_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+default_ccloc_raw['MonthEnd'] = default_ccloc_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+default_ccloc_raw['MonthEnd'] = pd.to_datetime(default_ccloc_raw['MonthEnd'])
+
+
+#excluding the already non-performing accounts from the analysis (can be changed to excluding only defaulted obligors)
+
+
+default_ccloc_raw = default_ccloc_raw.loc[~default_ccloc_raw.FINAL_ORR.isin(grade_exclusion)]
+
+ccloc_cif = default_ccloc_raw.CIF.unique()
+
+
+# %%
+default_status_ccloc = all_default.loc[all_default.cif.isin(ccloc_cif)]
+
+default_status_ccloc = default_status_ccloc.loc[default_status_ccloc.loaddt > CCLOC_date]
+
+default_ccloc1 = distance_to_def(default_status_ccloc)
+
+
+default_ccloc = pd.merge(default_ccloc1, default_ccloc_raw,on=['CIF', 'MonthEnd'], how='inner' )
+#default_ccloc = default_ccloc2.loc[default_ccloc2.default_flag != '1']
+
+# %%
+test = default_ccloc1.loc[default_ccloc1.defaulted_within_12mo == 1]
+
+test.to_csv('test_ccloc.csv')
+
+# %%
+# DRR CCLOC
+
+default_CCLOC = default_ccloc.fillna(0)
+default_CCLOC['defaulted_within_12mo'] = default_CCLOC['defaulted_within_12mo'].astype(int)
+
+
+CCLOC_total = default_CCLOC.groupby('FINAL_ORR')['CIF'].count() 
+CCLOC_total = pd.DataFrame(CCLOC_total)
+CCLOC_total = CCLOC_total.reset_index()
+CCLOC_total['FINAL_ORR'] = CCLOC_total['FINAL_ORR'].astype(int)
+CCLOC_total = CCLOC_total.sort_values(by='FINAL_ORR')
+
+
+CCLOC_default = default_CCLOC.groupby('FINAL_ORR')['defaulted_within_12mo'].sum()
+CCLOC_default = pd.DataFrame(CCLOC_default)
+CCLOC_default = CCLOC_default.reset_index()
+CCLOC_default['FINAL_ORR'] = CCLOC_default['FINAL_ORR'].astype(int)
+CCLOC_default = CCLOC_default.sort_values(by='FINAL_ORR')
+
+CCLOC_acc = pd.merge(CCLOC_total, CCLOC_default, right_on = 'FINAL_ORR', left_on = 'FINAL_ORR', how = 'inner')
+
+CCLOC_acc_v2 = pd.merge(dummy_df1, CCLOC_acc, on='FINAL_ORR', how = 'left')
+CCLOC_acc_v2 = CCLOC_acc_v2.fillna(0)
+CCLOC_acc_v2 = pd.merge(CCLOC_acc_v2,masterscale, on = 'FINAL_ORR', how = 'left')
+CCLOC_acc_v2['Predict_Default'] = CCLOC_acc_v2['CIF']*CCLOC_acc_v2['PD']
+
+CCLOC_acc_v2['Actual_PD'] = np.where(CCLOC_acc_v2['CIF'] != 0, CCLOC_acc_v2['defaulted_within_12mo'] / CCLOC_acc_v2['CIF'], 0)
+predicted_rate_CCLOC2 = CCLOC_acc_v2['Predict_Default'].sum()/CCLOC_acc_v2['CIF'].sum()
+actual_rate_CCLOC2 = CCLOC_acc_v2['defaulted_within_12mo'].sum()/CCLOC_acc_v2['CIF'].sum()
+MAE_CCLOC = abs(predicted_rate_CCLOC2 - actual_rate_CCLOC2)
+
+ccloc_kpi.append(MAE_CCLOC)
+
+# %%
+CCLOC_acc_v2.to_csv('ccloc_actual_predict.csv')
+
+# %%
+sql_early = """
+
+select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'Innovation up to $15MM')	
+
+     	
+      		
+				
+				and b.DATE_APPROVED < '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+default_early_raw = pd.read_sql_query(sql_early, conn)
+default_early_raw['DATE_APPROVED'] = pd.to_datetime(default_early_raw['DATE_APPROVED'])
+default_early_raw['MonthEnd'] = default_early_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+default_early_raw['MonthEnd'] = default_early_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+default_early_raw['MonthEnd'] = pd.to_datetime(default_early_raw['MonthEnd'])
+
+
+#excluding the already non-performing accounts from the analysis (can be changed to excluding only defaulted obligors)
+
+
+default_early_raw = default_early_raw.loc[~default_early_raw.FINAL_ORR.isin(grade_exclusion)]
+
+early_cif = default_early_raw.CIF.unique()
+
+
+# %%
+default_status_early = all_default.loc[all_default.cif.isin(early_cif)]
+
+default_status_early = default_status_early.loc[default_status_early.loaddt > early_date]
+
+default_early1 = distance_to_def(default_status_early)
+
+
+default_early = pd.merge(default_early1, default_early_raw,on=['CIF', 'MonthEnd'], how='inner' )
+#default_early = default_early2.loc[default_early2.default_flag != '1']
+
+# %%
+# DRR Early Stage
+
+default_early_stage = default_early.fillna(0)
+default_early_stage['defaulted_within_12mo'] = default_early_stage['defaulted_within_12mo'].astype(int)
+
+
+early_stage_total = default_early_stage.groupby('FINAL_ORR')['CIF'].count() 
+early_stage_total = pd.DataFrame(early_stage_total)
+early_stage_total = early_stage_total.reset_index()
+early_stage_total['FINAL_ORR'] = early_stage_total['FINAL_ORR'].astype(int)
+early_stage_total = early_stage_total.sort_values(by='FINAL_ORR')
+
+
+early_stage_default = default_early_stage.groupby('FINAL_ORR')['defaulted_within_12mo'].sum()
+early_stage_default = pd.DataFrame(early_stage_default)
+early_stage_default = early_stage_default.reset_index()
+early_stage_default['FINAL_ORR'] = early_stage_default['FINAL_ORR'].astype(int)
+early_stage_default = early_stage_default.sort_values(by='FINAL_ORR')
+
+early_stage_acc = pd.merge(early_stage_total, early_stage_default, right_on = 'FINAL_ORR', left_on = 'FINAL_ORR', how = 'inner')
+
+early_stage_acc_v2 = pd.merge(dummy_df1, early_stage_acc, on='FINAL_ORR', how = 'left')
+early_stage_acc_v2 = early_stage_acc_v2.fillna(0)
+early_stage_acc_v2 = pd.merge(early_stage_acc_v2,masterscale, on = 'FINAL_ORR', how = 'left')
+early_stage_acc_v2['Predict_Default'] = early_stage_acc_v2['CIF']*early_stage_acc_v2['PD']
+
+early_stage_acc_v2['Actual_PD'] = np.where(early_stage_acc_v2['CIF'] != 0, early_stage_acc_v2['defaulted_within_12mo'] / early_stage_acc_v2['CIF'], 0)
+predicted_rate_early2 = early_stage_acc_v2['Predict_Default'].sum()/early_stage_acc_v2['CIF'].sum()
+actual_rate_early2 = early_stage_acc_v2['defaulted_within_12mo'].sum()/early_stage_acc_v2['CIF'].sum()
+MAE_early = abs(predicted_rate_early2 - actual_rate_early2)
+early_kpi.append(MAE_early)
+
+
+# %%
+early_stage_acc_v2.to_csv('early_stage_actual_predict.csv')
+
+# %%
+sql_nav = """
+
+select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
+				
+							
+                				
+                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
+				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
+				a.credit_req_nbr = b.CREDIT_REQ_NBR
+				
+    and a.risk_grade_template in ( 'NAV')	
+
+     	
+      		
+				
+				and b.DATE_APPROVED < '{month_end_12m_prior}'
+				and b.CREDIT_REQ_STATUS = 'Booked'
+				
+				and a.cif is not null
+        
+    """.format(month_end_12m_prior=month_end_12m_prior)
+
+default_nav_raw = pd.read_sql_query(sql_nav, conn)
+default_nav_raw['DATE_APPROVED'] = pd.to_datetime(default_nav_raw['DATE_APPROVED'])
+default_nav_raw['MonthEnd'] = default_nav_raw['DATE_APPROVED'] + pd.offsets.MonthEnd(1)
+default_nav_raw['MonthEnd'] = default_nav_raw['MonthEnd'].dt.strftime("%m/%d/%Y")
+default_nav_raw['MonthEnd'] = pd.to_datetime(default_nav_raw['MonthEnd'])
+
+
+#excluding the already non-performing accounts from the analysis (can be changed to excluding only defaulted obligors)
+
+
+default_nav_raw = default_nav_raw.loc[~default_nav_raw.FINAL_ORR.isin(grade_exclusion)]
+
+nav_cif = default_nav_raw.CIF.unique()
+
+
+# %%
+default_status_nav = all_default.loc[all_default.cif.isin(nav_cif)]
+
+default_status_nav = default_status_nav.loc[default_status_nav.loaddt > NAV_date]
+
+default_nav1 = distance_to_def(default_status_nav)
+
+
+default_nav = pd.merge(default_nav1, default_nav_raw,on=['CIF', 'MonthEnd'], how='inner' )
+#default_nav = default_nav2.loc[default_nav2.default_flag != '1']
+
+# %%
+# DRR NAV
+
+default_NAV = default_nav.fillna(0)
+default_NAV['defaulted_within_12mo'] = default_NAV['defaulted_within_12mo'].astype(int)
+
+
+NAV_total = default_NAV.groupby('FINAL_ORR')['CIF'].count() 
+NAV_total = pd.DataFrame(NAV_total)
+NAV_total = NAV_total.reset_index()
+NAV_total['FINAL_ORR'] = NAV_total['FINAL_ORR'].astype(int)
+NAV_total = NAV_total.sort_values(by='FINAL_ORR')
+
+
+NAV_default = default_NAV.groupby('FINAL_ORR')['defaulted_within_12mo'].sum()
+NAV_default = pd.DataFrame(NAV_default)
+NAV_default = NAV_default.reset_index()
+NAV_default['FINAL_ORR'] = NAV_default['FINAL_ORR'].astype(int)
+NAV_default = NAV_default.sort_values(by='FINAL_ORR')
+
+NAV_acc = pd.merge(NAV_total, NAV_default, right_on = 'FINAL_ORR', left_on = 'FINAL_ORR', how = 'inner')
+
+NAV_acc_v2 = pd.merge(dummy_df1, NAV_acc, on='FINAL_ORR', how = 'left')
+NAV_acc_v2 = NAV_acc_v2.fillna(0)
+NAV_acc_v2 = pd.merge(NAV_acc_v2,masterscale, on = 'FINAL_ORR', how = 'left')
+NAV_acc_v2['Predict_Default'] = NAV_acc_v2['CIF']*NAV_acc_v2['PD']
+
+NAV_acc_v2['Actual_PD'] = np.where(NAV_acc_v2['CIF'] != 0, NAV_acc_v2['defaulted_within_12mo'] / NAV_acc_v2['CIF'], 0)
+predicted_rate_NAV2 = NAV_acc_v2['Predict_Default'].sum()/NAV_acc_v2['CIF'].sum()
+actual_rate_NAV2 = NAV_acc_v2['defaulted_within_12mo'].sum()/NAV_acc_v2['CIF'].sum()
+MAE_NAV = abs(predicted_rate_NAV2 - actual_rate_NAV2)
+
+nav_kpi.append(MAE_NAV)
+
+# %%
+NAV_acc_v2.to_csv('NAV_actual_predict.csv')
+
+# %% [markdown]
+# #### Section 3: Gini
+
+# %%
+# GINI calculations for all DRR models
+
+#DRR Large Corp
+ 
+default_large_corp['FINAL_ORR'] = default_large_corp['FINAL_ORR'].astype(int)
+large_corp_gini = pd.merge(default_large_corp,masterscale, on = 'FINAL_ORR', how = 'left') 
+large_corp_gini = large_corp_gini.fillna(0)
+
+predicted_rate_large = large_corp_gini['PD']
+actual_rate_large = large_corp_gini['defaulted_within_12mo']
+
+auc_large = roc_auc_score(actual_rate_large, predicted_rate_large)
+gini_large = 2*auc_large -1 
+
+large_corp_kpi.append(gini_large)
+
+#DRR Mid Size 
+
+default_mid['FINAL_ORR'] = default_mid['FINAL_ORR'].astype(int)
+mid_gini = pd.merge(default_mid,masterscale, on = 'FINAL_ORR', how = 'left') 
+mid_gini = mid_gini.fillna(0)
+
+predicted_rate_mid = mid_gini['PD']
+actual_rate_mid = mid_gini['defaulted_within_12mo']
+
+auc_mid = roc_auc_score(actual_rate_mid, predicted_rate_mid)
+gini_mid = 2*auc_mid -1
+
+mid_kpi.append(gini_mid)
+
+#DRR Early Stage
+
+default_early_stage['FINAL_ORR'] = default_early_stage['FINAL_ORR'].astype(int)
+early_stage_gini = pd.merge(default_early_stage,masterscale, on = 'FINAL_ORR', how = 'left')
+early_stage_gini = early_stage_gini.fillna(0)
+
+predicted_rate_early = early_stage_gini['PD']
+actual_rate_early = early_stage_gini['defaulted_within_12mo']
+
+auc_early = roc_auc_score(actual_rate_early,predicted_rate_early)
+gini_early = 2*auc_early - 1 
+
+early_kpi.append(gini_early)
+
+
+#DRR GFB Firm
+
+
+default_Firm['FINAL_ORR'] = default_Firm['FINAL_ORR'].astype(int)
+Firm_gini = pd.merge(default_Firm,masterscale, on = 'FINAL_ORR', how = 'left')
+Firm_gini = Firm_gini.fillna(0)
+
+predicted_rate_Firm = Firm_gini['PD']
+actual_rate_Firm = Firm_gini['defaulted_within_12mo']
+
+auc_Firm = roc_auc_score(actual_rate_Firm,predicted_rate_Firm)
+gini_Firm = 2*auc_Firm - 1 
+
+firm_kpi.append(gini_Firm)
+
+
+
+#DRR CCLOC 
+
+default_CCLOC['FINAL_ORR'] = default_CCLOC['FINAL_ORR'].astype(int)
+CCLOC_gini = pd.merge(default_CCLOC,masterscale, on = 'FINAL_ORR', how = 'left') 
+CCLOC_gini = CCLOC_gini.fillna(0)
+
+
+predicted_rate_CCLOC = CCLOC_gini['PD']
+actual_rate_CCLOC = CCLOC_gini['defaulted_within_12mo']
+
+auc_ccloc = roc_auc_score(actual_rate_CCLOC, predicted_rate_CCLOC)
+gini_ccloc = 2*auc_ccloc - 1
+
+ccloc_kpi.append(gini_ccloc)
+
+#DRR NAV
+
+default_NAV['FINAL_ORR'] = default_NAV['FINAL_ORR'].astype(int)
+NAV_gini = pd.merge(default_NAV,masterscale, on = 'FINAL_ORR', how = 'left') 
+NAV_gini = NAV_gini.fillna(0)
+
+
+predicted_rate_NAV = NAV_gini['PD']
+actual_rate_NAV = NAV_gini['defaulted_within_12mo']
+try: 
+    auc_nav = roc_auc_score(actual_rate_NAV, predicted_rate_NAV)
+except ValueError: 
+    auc_nav = 0
+gini_nav = 2*auc_nav - 1
+
+
+nav_kpi.append(gini_nav)
+
+# %% [markdown]
+# #### Section 4: KS 
+
+# %%
+# KS calculations for all DRR models
+
+
+
+#DRR Large Corp 
+
+fpr_large, tpr_large, large_thresholds = roc_curve(actual_rate_large,predicted_rate_large)
+ks_large = max(tpr_large - fpr_large) 
+
+large_corp_kpi.append(ks_large)
+
+#DRR Mid Size 
+fpr_mid, tpr_mid, mid_thresholds = roc_curve(actual_rate_mid,predicted_rate_mid)
+ks_mid = max(tpr_mid - fpr_mid) 
+mid_kpi.append(ks_mid)
+
+#DRR Early Stage
+
+fpr_early, tpr_early, early_thresholds = roc_curve(actual_rate_early,predicted_rate_early)
+ks_early = max(tpr_early - fpr_early) 
+early_kpi.append(ks_early)
+
+#DRR GFB Firm
+
+fpr_Firm, tpr_Firm, Firm_thresholds = roc_curve(actual_rate_Firm,predicted_rate_Firm)
+ks_Firm = max(tpr_Firm - fpr_Firm) 
+firm_kpi.append(ks_Firm)
+
+
+
+#DRR CCLOC 
+
+fpr_ccloc, tpr_ccloc, ccloc_thresholds = roc_curve(actual_rate_CCLOC,predicted_rate_CCLOC)
+ks_ccloc = max(tpr_ccloc - fpr_ccloc) 
+ccloc_kpi.append(ks_ccloc)
+
+
+#DRR NAV
+try:
+    fpr_nav, tpr_nav, nav_thresholds = roc_curve(actual_rate_NAV,predicted_rate_NAV)
+except ValueError:
+    fpr_nav = 0
+    tpr_nav = 0
+
+try: 
+    ks_nav = max(tpr_nav - fpr_nav) 
+except TypeError: 
+    ks_nav = 0
+nav_kpi.append(ks_nav)
+
+# %%
+
+table_cols = ['KPI NUMBER','KPI NAME','MODEL','LOADDT','QUARTER','KPI VALUE']
+
+kpi_ref = {model_name[0]: large_corp_kpi, model_name[1] : mid_kpi, model_name[2] : early_kpi, model_name[3] : ccloc_kpi, model_name[4] : nav_kpi, model_name[5] : firm_kpi}
+
+kpi_table = []
+
+for model in model_name: 
+   for i in range(4):
+      print(kpi_ref[model][i])
+      row = [list(kpi_dict1.keys())[i],list(kpi_dict1.values())[i],model,last_month_end1,kpi_quarter,kpi_ref[model][i]]
+      kpi_table.append(row)
+
+
+kpi_table1 = pd.DataFrame(kpi_table, columns = table_cols)
+kpi_table1_v2 = kpi_table1.explode('KPI VALUE')
+
+# %% [markdown]
+# #### Section 6: Calculation of Thresholds for Accuracy for all Models
+
+# %%
+import math
+
+data_list = [default_large_corp, default_mid, default_early_stage, default_CCLOC, default_NAV, default_Firm]
+
+accuracy_threshold = []
+perc_threshold_hard1 = []
+perc_threshold_soft1 = []
+
+for j in range(6):
+    for i in range(1000):
+        n_1 = math.ceil(data_list[j].shape[0]*0.8)
+        df = data_list[j].sample(n=n_1, replace=True)
+        df = df.fillna(0)
+        df['default_flag'] = df['default_flag'].astype(int)
+
+
+        df1 = df.groupby('FINAL_ORR')['CIF'].count() 
+        df1 = pd.DataFrame(df1)
+        df1 = df1.reset_index()
+        df1['FINAL_ORR'] = df1['FINAL_ORR'].astype(int)
+        df1 = df1.sort_values(by='FINAL_ORR')
+
+
+        df2 = df.groupby('FINAL_ORR')['default_flag'].sum()
+        df2 = pd.DataFrame(df2)
+        df2 = df2.reset_index()
+        df2['FINAL_ORR'] = df2['FINAL_ORR'].astype(int)
+        df2 = df2.sort_values(by='FINAL_ORR')
+
+
+        df3 = pd.merge(df2, df1, right_on = 'FINAL_ORR', left_on = 'FINAL_ORR', how = 'inner')
+        
+        df4 = pd.merge(dummy_df1, df3, on='FINAL_ORR', how = 'left')
+        
+        df4 = df4.fillna(0)
+        df4 = pd.merge(df4,masterscale, on = 'FINAL_ORR', how = 'left')
+        df4['Predict_Default'] = df4['CIF']*df4['PD']
+
+        df4['Actual_PD'] = np.where(df4['CIF'] != 0, df4['default_flag'] / df4['CIF'], 0)
+        predicted_rate = df4['Predict_Default'].sum()/df4['CIF'].sum()
+        actual_rate = df4['default_flag'].sum()/df4['CIF'].sum()
+        MAE_df = abs(predicted_rate - actual_rate)
+        accuracy_threshold.append(MAE_df)
+    
+    perc_threshold_hard = np.percentile(accuracy_threshold, 98)
+    perc_threshold_soft = np.percentile(accuracy_threshold, 80)
+    perc_threshold_hard1.append(perc_threshold_hard)
+    perc_threshold_soft1.append(perc_threshold_soft)
+
+
+
+
+# %%
+#Exporting thresholds
+
+perc_threshold_soft2 = pd.DataFrame(list(zip(model_name, perc_threshold_soft1)), columns=['Model_Name', 'Soft_Breach'])
+perc_threshold_soft2.to_csv('Soft_Breach_Accuracy_Threshold.csv')
+
+perc_threshold_hard2 = pd.DataFrame(list(zip(model_name, perc_threshold_hard1)), columns=['Model_Name', 'Hard_Breach'])
+perc_threshold_hard2.to_csv('Hard_Breach_Accuracy_Threshold.csv')
+
+# %%
+now = datetime.now()
+
+
+timestamp_string = now.strftime("_%m_%d_%Y")
+
+
+
+
+table_name = 'all_kpi_' + kpi_quarter + year + '_updated' + timestamp_string + '.csv'
+
+kpi_table1_v2.to_csv(table_name)
 
 
