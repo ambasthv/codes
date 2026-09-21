@@ -1,4 +1,61 @@
-This code segment is to extract dataset for troubleshooting in case a deep dive into the KPIs is required
+# %%
+# ### Importing libraries to be used for getting data and KPI calculations
+
+
+import pandas as pd
+import numpy as np
+pd.options.display.float_format = '{:.3f}'.format
+pd.set_option('display.max_columns',None)
+
+import pyodbc
+
+import os
+#print(os.getcwd())
+
+import warnings
+warnings.filterwarnings('ignore')
+
+import gc
+
+from datetime import datetime
+from datetime import date 
+from dateutil.relativedelta import relativedelta 
+import timeit
+from pandas.tseries.offsets import DateOffset
+
+from sklearn.metrics import log_loss, roc_auc_score, recall_score, precision_score
+from sklearn.metrics import average_precision_score, f1_score, classification_report
+from sklearn.metrics import accuracy_score
+
+from sklearn.metrics import roc_curve
+from warnings import filterwarnings
+
+filterwarnings("ignore", category=UserWarning, message='.*pandas only supports SQLAlchemy connectable.*')
+start = datetime.now()
+#print(start)
+
+
+# %%
+model_name = ['Innovation Large Corp', 'Innovation Mid Size', 'Innovation Early Stage', 'GFB CCLOC', 'GFB NAV', 'GFB Firm']
+
+# %%
+conn = pyodbc.connect('Driver={SQL Server};'
+                      'Server=SQLAG-CRDMPRD-L.CORP.SVBANK.COM,1433;'
+                      'Database=CRDADMANALYSIS;'
+                      'Schema=dbo'
+                      'Trusted_Connection=yes;')
+
+
+conn2 = pyodbc.connect('Driver={SQL Server};'
+                      'Server=SQLAG-CRDMPRD-L.CORP.SVBANK.COM,1433;'
+                      'Database=CRDADMPRD;'
+                      'Schema=dbo'
+                      'Trusted_Connection=yes;')
+
+# %%
+sql_drr_all = """
+
+
 select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
                 a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
 				
@@ -15,243 +72,38 @@ select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR,
      	
       		
 				
-				and b.DATE_APPROVED < '{month_end_12m_prior}'
+				
 				and b.CREDIT_REQ_STATUS = 'Booked'
 				
 				and a.cif is not null
-Portfolio Data for ORR for each Month End in 12M Evaluation Period
-SET NOCOUNT ON
+                
+                
+    
+    
+    """
 
-select  loaddt as MonthEnd, CIF, max(CL_OBLIGOR_RISK_RATING) as orr1 
 
-from [CRDADMPRD].[dbo].[CDM_CREDIT_LINES_VIEW]
+# %%
+drr_all = pd.DataFrame(pd.read_sql_query(sql_drr_all, conn))
 
-where loaddt in ('{last_12_month_ends1}')
+# %%
+drr_all_v2 = drr_all[['CIF', 'DATE_APPROVED','FINAL_ORR','risk_grade_template']]
+drr_all_v2 = drr_all_v2.drop_duplicates()
 
-group by loaddt, cif
-Section 1: PD Models Override - In this segment data is extracted for overrides per risk template for the evaluation period.
-DRR Large Corp
-select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
-                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'Innovation > $75MM & Sponsor – CF', 
-    'Innovation > $75MM & Sponsor – ID/BS')	
+# %%
 
-     	
-      		
-				
-				and b.DATE_APPROVED > '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-DRR Mid Size
-select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
-                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in (  'Innovation > $15MM up to $75MM' )	
+pivot = pd.pivot_table(
+    drr_all_v2,
+    index='FINAL_ORR',      # rows
+    columns='risk_grade_template',   # columns
+    aggfunc='size',           # count occurrences
+    fill_value=0
+)
 
-     	
-      		
-				
-				and b.DATE_APPROVED > '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-DRR Early Stage
-select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
-                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'Innovation up to $15MM' )	
+print(pivot)
 
-     	
-      		
-				
-				and b.DATE_APPROVED > '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-DRR GFB Firm
-select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
-                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'GFB Firm' )	
 
-     	
-      		
-				
-				and b.DATE_APPROVED > '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-DRR GFB CCLOC
-select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
-                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'CCLOC' )	
+# %%
+pivot.to_csv('risk_model_orr_distribution.csv')
 
-     	
-      		
-				
-				and b.DATE_APPROVED > '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-DRR GFB NAV
-select distinct  a.CIF,  b.DATE_APPROVED,a.CALCULATED_ORR, a.FINAL_ORR, 				
-                a.DIFFERENCE_OF_CALC_AND_FINAL_ORR, a.OVERRIDE_REASON, a.risk_grade_template	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'NAV' )	
 
-     	
-      		
-				
-				and b.DATE_APPROVED > '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-Section 2: PD Models Accuracy
-#Default Status Data for all Models
-SELECT distinct cif, loaddt, default_flag
-
-from [CRDADMPRD].[dbo].[CDM_CLIENT_DEFAULT_STATUS_VW]
-
-			where loaddt > '01-01-2024'
-select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'Innovation > $75MM & Sponsor – CF', 
-    'Innovation > $75MM & Sponsor – ID/BS')	
-
-     	
-      		
-				
-				and b.DATE_APPROVED < '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'Innovation > $15MM up to $75MM')	
-
-     	
-      		
-				
-				and b.DATE_APPROVED < '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'GFB Firm')	
-
-     	
-      		
-				
-				and b.DATE_APPROVED < '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'CCLOC')	
-
-     	
-      		
-				
-				and b.DATE_APPROVED < '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'Innovation up to $15MM')	
-
-     	
-      		
-				
-				and b.DATE_APPROVED < '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
-select distinct  a.CIF,  b.DATE_APPROVED, a.FINAL_ORR	
-				
-							
-                				
-                from [CRDADMPRD].[dbo].[CDM_LOS_FACILITY_ENTITY_INVOLVEMENT_VW] a join  				
-				[CRDADMPRD].[dbo].[CDM_LOS_CREDIT_REQUEST_ATTRIBUTES_VW] b on 
-				a.credit_req_nbr = b.CREDIT_REQ_NBR
-				
-    and a.risk_grade_template in ( 'NAV')	
-
-     	
-      		
-				
-				and b.DATE_APPROVED < '{month_end_12m_prior}'
-				and b.CREDIT_REQ_STATUS = 'Booked'
-				
-				and a.cif is not null
